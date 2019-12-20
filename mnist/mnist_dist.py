@@ -1,6 +1,8 @@
 from __future__ import print_function
 import argparse
+from math import ceil
 from random import Random
+from socket import socket
 
 import torch
 import torch.nn as nn
@@ -41,6 +43,8 @@ class Net(nn.Module):
 
 
 """ Dataset partitioning helper """
+
+
 class Partition(object):
 
     def __init__(self, data, index):
@@ -76,42 +80,62 @@ class DataPartitioner(object):
 
 
 """ Partitioning MNIST """
+
+
 def partition_dataset():
+    print("Data Loading")
     dataset = datasets.MNIST('./data', train=True, download=True,
                              transform=transforms.Compose([
                                  transforms.ToTensor(),
                                  transforms.Normalize((0.1307,), (0.3081,))
                              ]))
     size = dist.get_world_size()
-    bsz = 128 / float(size)
+    bsz = int(128 / float(size))
     partition_sizes = [1.0 / size for _ in range(size)]
     partition = DataPartitioner(dataset, partition_sizes)
     partition = partition.use(dist.get_rank())
     train_set = torch.utils.data.DataLoader(partition,
-                                         batch_size=bsz,
-                                         shuffle=True)
+                                            batch_size=bsz,
+                                            shuffle=True)
     return train_set, bsz
 
 
 """ Gradient averaging. """
+
+
 def average_gradients(model):
     size = float(dist.get_world_size())
     for param in model.parameters():
         dist.all_reduce(param.grad.data, op=dist.reduce_op.SUM)
         param.grad.data /= size
 
+
 """ Distributed Synchronous SGD Example """
+
+
 def run(rank, size):
+    if (rank == 0):
+        print("Run Fn")
+
     torch.manual_seed(1234)
     train_set, bsz = partition_dataset()
     model = Net()
     optimizer = optim.SGD(model.parameters(),
                           lr=0.01, momentum=0.5)
 
-    num_batches = torch.ceil(len(train_set.dataset) / float(bsz))
+    num_batches = ceil(len(train_set.dataset) / float(bsz))
+    if (rank == 0):
+        print("Started Training")
+    total_data = len(train_set)
+    epochs = 10
+    total_steps = epochs * total_data
     for epoch in range(10):
         epoch_loss = 0.0
+        count = 0
         for data, target in train_set:
+            count = count + 1
+            result = '{0:.4g}'.format((count/ float(total_steps))*100.0)
+            print("Progress {}% \r".format(result),end = '\r')
             optimizer.zero_grad()
             output = model(data)
             loss = F.nll_loss(output, target)
@@ -123,5 +147,14 @@ def run(rank, size):
               epoch, ': ', epoch_loss / num_batches)
 
 
-if __name__ == '__main__':
-    dist.init_process(0, 0, run, backend='mpi')
+def init_processes(rank, size, fn, backend='tcp'):
+    """ Initialize the distributed environment. """
+    dist.init_process_group(backend, rank=rank, world_size=size)
+    fn(rank, size)
+
+
+if __name__ == "__main__":
+    world_size = int(os.environ['OMPI_COMM_WORLD_SIZE'])
+    world_rank = int(os.environ['OMPI_COMM_WORLD_RANK'])
+    print(world_rank, world_size)
+    init_processes(world_rank, world_size, run, backend='mpi')
