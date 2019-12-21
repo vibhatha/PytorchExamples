@@ -89,14 +89,17 @@ def partition_dataset():
                                  transforms.ToTensor(),
                                  transforms.Normalize((0.1307,), (0.3081,))
                              ]))
+    print(type(dataset))
     size = dist.get_world_size()
     bsz = int(128 / float(size))
     partition_sizes = [1.0 / size for _ in range(size)]
+    print("Partition Sizes {}".format(partition_sizes))
     partition = DataPartitioner(dataset, partition_sizes)
     partition = partition.use(dist.get_rank())
     train_set = torch.utils.data.DataLoader(partition,
                                             batch_size=bsz,
                                             shuffle=True)
+
     return train_set, bsz
 
 
@@ -119,6 +122,7 @@ def run(rank, size):
 
     torch.manual_seed(1234)
     train_set, bsz = partition_dataset()
+    print("Data Points Per Rank {} of Size {}".format(len(train_set.dataset), size))
     model = Net()
     optimizer = optim.SGD(model.parameters(),
                           lr=0.01, momentum=0.5)
@@ -133,9 +137,10 @@ def run(rank, size):
         epoch_loss = 0.0
         count = 0
         for data, target in train_set:
+            #print("Data Size {} of Rank {}".format(data.shape, rank))
             count = count + 1
-            result = '{0:.4g}'.format((count/ float(total_steps))*100.0)
-            print("Progress {}% \r".format(result),end = '\r')
+            result = '{0:.4g}'.format((count / float(total_steps)) * 100.0)
+            print("Progress {}% \r".format(result), end='\r')
             optimizer.zero_grad()
             output = model(data)
             loss = F.nll_loss(output, target)
@@ -143,8 +148,9 @@ def run(rank, size):
             loss.backward()
             average_gradients(model)
             optimizer.step()
-        print('Rank ', dist.get_rank(), ', epoch ',
-              epoch, ': ', epoch_loss / num_batches)
+        if (rank == 0):
+            print('Rank ', dist.get_rank(), ', epoch ',
+                  epoch, ': ', epoch_loss / num_batches)
 
 
 def init_processes(rank, size, fn, backend='tcp'):
