@@ -1,15 +1,12 @@
 from __future__ import print_function
-import argparse
+
 from math import ceil
 from random import Random
-from socket import socket
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
-from torchvision import datasets, transforms
-from torch.optim.lr_scheduler import StepLR
 
 import os
 import torch
@@ -81,28 +78,28 @@ class DataPartitioner(object):
         return Partition(self.data, self.partitions[partition])
 
 
-""" Partitioning MNIST """
-
-
-def partition_dataset():
+def partition_numpy_dataset():
     print("Data Loading")
-    dataset = datasets.MNIST('./data', train=True, download=True,
-                             transform=transforms.Compose([
-                                 transforms.ToTensor(),
-                                 transforms.Normalize((0.1307,), (0.3081,))
-                             ]))
+    dataset = np.load("datasets/train_data.npy")
+    targets = np.load("datasets/train_target.npy")
     print(type(dataset))
     size = dist.get_world_size()
     bsz = int(128 / float(size))
     partition_sizes = [1.0 / size for _ in range(size)]
     print("Partition Sizes {}".format(partition_sizes))
-    partition = DataPartitioner(dataset, partition_sizes)
-    partition = partition.use(dist.get_rank())
-    train_set = torch.utils.data.DataLoader(partition,
-                                            batch_size=bsz,
-                                            shuffle=True)
+    partition_data = DataPartitioner(dataset, partition_sizes)
+    partition_data = partition_data.use(dist.get_rank())
+    train_set_data = torch.utils.data.DataLoader(partition_data,
+                                                 batch_size=bsz,
+                                                 shuffle=False)
+    partition_target = DataPartitioner(targets, partition_sizes)
+    partition_target = partition_target.use(dist.get_rank())
+    train_set_target = torch.utils.data.DataLoader(partition_target,
+                                                   batch_size=bsz,
+                                                   shuffle=False)
 
-    return train_set, bsz
+    return train_set_data, train_set_target, bsz
+
 
 """ Gradient averaging. """
 
@@ -122,23 +119,24 @@ def run(rank, size):
         print("Run Fn")
 
     torch.manual_seed(1234)
-    train_set, bsz = partition_dataset()
+    train_set_data, train_set_target, bsz = partition_numpy_dataset()
 
-    print("Data Points Per Rank {} of Size {}".format(len(train_set.dataset), size))
+    print("Data Points Per Rank {} of Size {}".format(len(train_set_data.dataset), size))
     model = Net()
     optimizer = optim.SGD(model.parameters(),
                           lr=0.01, momentum=0.5)
 
-    num_batches = ceil(len(train_set.dataset) / float(bsz))
+    num_batches = ceil(len(train_set_data.dataset) / float(bsz))
     if (rank == 0):
         print("Started Training")
-    total_data = len(train_set)
+    total_data = len(train_set_data)
     epochs = 10
     total_steps = epochs * total_data
     for epoch in range(10):
         epoch_loss = 0.0
         count = 0
-        for data, target in train_set:
+        for data, target in zip(train_set_data, train_set_target):
+            data = np.reshape(data, (data.shape[0], 1, data.shape[1], data.shape[2]))
             print(
                 "Data Size {}({},{}) of Rank {} : target {}, {}".format(data.shape, (data[0].numpy().dtype), type(data),
                                                                         rank, target, len(target)))
