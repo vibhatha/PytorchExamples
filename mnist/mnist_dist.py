@@ -91,7 +91,7 @@ def partition_dataset():
                                  transforms.ToTensor(),
                                  transforms.Normalize((0.1307,), (0.3081,))
                              ]))
-    print(type(dataset))
+    #print(type(dataset), dataset.data)
     size = dist.get_world_size()
     bsz = int(128 / float(size))
     partition_sizes = [1.0 / size for _ in range(size)]
@@ -139,9 +139,10 @@ def run(rank, size):
         epoch_loss = 0.0
         count = 0
         for data, target in train_set:
-            print(
-                "Data Size {}({},{}) of Rank {} : target {}, {}".format(data.shape, (data[0].numpy().dtype), type(data),
-                                                                        rank, target, len(target)))
+            # print(
+            #     "Data Size {}({},{}) of Rank {} : target {}, {}".format(data.shape, (data[0].numpy().dtype), type(data),
+            #                                                             rank, target, len(target)))
+            #print(data[0],target[0])
             count = count + 1
             result = '{0:.4g}'.format((count / float(total_steps)) * 100.0)
             print("Progress {}% \r".format(result), end='\r')
@@ -149,6 +150,7 @@ def run(rank, size):
             output = model(data)
             loss = F.nll_loss(output, target)
             epoch_loss += loss.item()
+            #print(epoch_loss)
             loss.backward()
             average_gradients(model)
             optimizer.step()

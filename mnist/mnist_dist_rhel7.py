@@ -136,10 +136,11 @@ def run(rank, size):
         epoch_loss = 0.0
         count = 0
         for data, target in zip(train_set_data, train_set_target):
-            data = np.reshape(data, (data.shape[0], 1, data.shape[1], data.shape[2]))
-            print(
-                "Data Size {}({},{}) of Rank {} : target {}, {}".format(data.shape, (data[0].numpy().dtype), type(data),
-                                                                        rank, target, len(target)))
+            data = np.reshape(data, (data.shape[0], 1, data.shape[1], data.shape[2]))/ 128.0
+            # print(
+            #     "Data Size {}({},{}) of Rank {} : target {}, {}".format(data.shape, (data[0].numpy().dtype), type(data),
+            #                                                             rank, target, len(target)))
+            #print(data[0], target[0])
             count = count + 1
             result = '{0:.4g}'.format((count / float(total_steps)) * 100.0)
             print("Progress {}% \r".format(result), end='\r')
@@ -147,6 +148,7 @@ def run(rank, size):
             output = model(data)
             loss = F.nll_loss(output, target)
             epoch_loss += loss.item()
+            #print(epoch_loss)
             loss.backward()
             average_gradients(model)
             optimizer.step()
