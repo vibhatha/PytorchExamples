@@ -162,7 +162,7 @@ def run(rank, size, do_log=False):
     total_data = len(train_set_data)
     epochs = 10
     total_steps = epochs * total_data
-    for epoch in range(1):
+    for epoch in range(20):
         epoch_loss = 0.0
         count = 0
         for data, target in zip(train_set_data, train_set_target):
@@ -252,5 +252,5 @@ if __name__ == "__main__":
     do_log = False
     world_size = int(os.environ['OMPI_COMM_WORLD_SIZE'])
     world_rank = int(os.environ['OMPI_COMM_WORLD_RANK'])
-    print(world_rank, world_size)
+    #print(world_rank, world_size)
     init_processes(world_rank, world_size, run, backend='mpi', do_log=do_log)
