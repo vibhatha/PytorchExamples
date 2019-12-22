@@ -79,14 +79,13 @@ class DataPartitioner(object):
 
 
 def partition_numpy_dataset():
-    print("Data Loading")
+    # print("Data Loading")
     dataset = np.load("datasets/train_data.npy")
     targets = np.load("datasets/train_target.npy")
-    print(type(dataset))
     size = dist.get_world_size()
     bsz = int(128 / float(size))
     partition_sizes = [1.0 / size for _ in range(size)]
-    print("Partition Sizes {}".format(partition_sizes))
+    # print("Partition Sizes {}".format(partition_sizes))
     partition_data = DataPartitioner(dataset, partition_sizes)
     partition_data = partition_data.use(dist.get_rank())
     train_set_data = torch.utils.data.DataLoader(partition_data,
@@ -97,7 +96,6 @@ def partition_numpy_dataset():
     train_set_target = torch.utils.data.DataLoader(partition_target,
                                                    batch_size=bsz,
                                                    shuffle=False)
-
     return train_set_data, train_set_target, bsz
 
 
@@ -105,11 +103,11 @@ def partition_numpy_dataset_test():
     print("Data Loading")
     dataset = np.load("datasets/test_data.npy")
     targets = np.load("datasets/test_target.npy")
-    print("Data Size For Test {} {}".format(dataset.shape, targets.shape))
+    # print("Data Size For Test {} {}".format(dataset.shape, targets.shape))
     size = dist.get_world_size()
     bsz = int(16 / float(size))
     partition_sizes = [1.0 / size for _ in range(size)]
-    print("Partition Sizes {}".format(partition_sizes))
+    # print("Partition Sizes {}".format(partition_sizes))
     partition_data = DataPartitioner(dataset, partition_sizes)
     partition_data = partition_data.use(dist.get_rank())
     train_set_data = torch.utils.data.DataLoader(partition_data,
@@ -137,14 +135,14 @@ def average_gradients(model):
 """ Distributed Synchronous SGD Example """
 
 
-def run(rank, size):
+def run(rank, size, do_log=False):
     if (rank == 0):
         print("Run Fn")
 
     torch.manual_seed(1234)
     train_set_data, train_set_target, bsz = partition_numpy_dataset()
-
-    print("Data Points Per Rank {} of Size {}".format(len(train_set_data.dataset), size))
+    if (do_log):
+        print("Data Points Per Rank {} of Size {}".format(len(train_set_data.dataset), size))
     model = Net()
     optimizer = optim.SGD(model.parameters(),
                           lr=0.01, momentum=0.5)
@@ -166,7 +164,8 @@ def run(rank, size):
             # print(data[0], target[0])
             count = count + 1
             result = '{0:.4g}'.format((count / float(total_steps)) * 100.0)
-            print("Progress {}% \r".format(result), end='\r')
+            if (rank == 0):
+                print("Progress {}% \r".format(result), end='\r')
             optimizer.zero_grad()
             output = model(data)
             loss = F.nll_loss(output, target)
@@ -181,7 +180,7 @@ def run(rank, size):
     return model
 
 
-def test(rank, model, device):
+def test(rank, model, device, do_log=False):
     test_set_data, test_set_target, bsz = partition_numpy_dataset_test()
     model.eval()
     test_loss = 0
@@ -208,26 +207,27 @@ def test(rank, model, device):
                 print(rank, count, len(data), len(test_set_data), data.shape, output.shape, correct, total_samples)
 
     test_loss /= (total_samples)
-    if (rank == 0):
+    if (rank == 0 and do_log):
         print('\nTest set: Average loss: {:.4f}, Accuracy: {}/{} ({:.0f}%)\n'.format(
             test_loss, correct, total_samples,
             100. * correct / (total_samples)))
 
 
-def init_processes(rank, size, fn, backend='tcp'):
+def init_processes(rank, size, fn, backend='tcp', do_log=False):
     """ Initialize the distributed environment. """
     dist.init_process_group(backend, rank=rank, world_size=size)
     use_cuda = torch.cuda.is_available()
-    #device = torch.device("cuda" if use_cuda else "cpu")
+    # device = torch.device("cuda" if use_cuda else "cpu")
     device = torch.device("cpu")
-    #model1 = Net()
-    #test(rank, model1, device)
+    # model1 = Net()
+    # test(rank, model1, device)
     model = fn(rank, size)
-    test(rank, model, device)
+    test(rank, model, device, do_log=do_log)
 
 
 if __name__ == "__main__":
+    do_log = False
     world_size = int(os.environ['OMPI_COMM_WORLD_SIZE'])
     world_rank = int(os.environ['OMPI_COMM_WORLD_RANK'])
     print(world_rank, world_size)
-    init_processes(world_rank, world_size, run, backend='mpi')
+    init_processes(world_rank, world_size, run, backend='mpi', do_log=do_log)
