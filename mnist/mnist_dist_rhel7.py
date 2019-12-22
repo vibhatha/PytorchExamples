@@ -17,7 +17,6 @@ from torch.multiprocessing import Process
 
 import numpy as np
 
-from util import LogSaver
 
 
 class Net(nn.Module):
@@ -226,6 +225,12 @@ def test(rank, model, device, do_log=False):
             global_accuracy.numpy()))
 
 
+def save_log(file_path=None, stat=""):
+    fp = open(file_path, mode="a+")
+    fp.write(stat + "\n")
+    fp.close()
+
+
 def init_processes(rank, size, fn, backend='tcp', do_log=False):
     """ Initialize the distributed environment. """
     dist.init_process_group(backend, rank=rank, world_size=size)
@@ -248,7 +253,7 @@ def init_processes(rank, size, fn, backend='tcp', do_log=False):
         local_testing_time = time.time() -  local_testing_time
         print("Total Training Time : {}".format(local_training_time))
         print("Total Testing Time : {}".format(local_testing_time))
-        LogSaver.save_log("stats.csv", stat="{},{},{}".format(size, local_training_time, local_testing_time))
+        save_log("stats.csv", stat="{},{},{}".format(size, local_training_time, local_testing_time))
 
 
 if __name__ == "__main__":
