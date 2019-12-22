@@ -1,5 +1,7 @@
 from __future__ import print_function
 
+import time
+
 from math import ceil
 from random import Random
 
@@ -216,7 +218,7 @@ def test(rank, model, device, do_log=False):
     test_loss /= (total_samples)
     local_accuracy = 100.0 * correct / total_samples
     global_accuracy = average_accuracy(torch.tensor(local_accuracy))
-    if (rank):
+    if (rank == 0):
         print('\nTest set: Average loss: {:.4f}, Accuracy: {}/{} ({:.0f}%)\n'.format(
             test_loss, correct, total_samples,
             global_accuracy.numpy()))
@@ -230,8 +232,20 @@ def init_processes(rank, size, fn, backend='tcp', do_log=False):
     device = torch.device("cpu")
     # model1 = Net()
     # test(rank, model1, device)
+    local_training_time = 0
+    local_testing_time = 0
+    if (rank == 0):
+        local_training_time = time.time()
     model = fn(rank, size)
+    if (rank == 0):
+        local_training_time = time.time() - local_training_time
+    if (rank == 0):
+        local_testing_time = time.time()
     test(rank, model, device, do_log=do_log)
+    if (rank == 0):
+        local_testing_time = time.time() -  local_testing_time
+        print("Total Training Time : {}".format(local_training_time))
+        print("Total Testing Time : {}".format(local_testing_time))
 
 
 if __name__ == "__main__":
