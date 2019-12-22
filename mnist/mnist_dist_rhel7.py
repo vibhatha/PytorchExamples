@@ -101,6 +101,29 @@ def partition_numpy_dataset():
     return train_set_data, train_set_target, bsz
 
 
+def partition_numpy_dataset_test():
+    print("Data Loading")
+    dataset = np.load("datasets/test_data.npy")
+    targets = np.load("datasets/test_target.npy")
+    print("Data Size For Test {} {}".format(dataset.shape, targets.shape))
+    size = dist.get_world_size()
+    bsz = int(16 / float(size))
+    partition_sizes = [1.0 / size for _ in range(size)]
+    print("Partition Sizes {}".format(partition_sizes))
+    partition_data = DataPartitioner(dataset, partition_sizes)
+    partition_data = partition_data.use(dist.get_rank())
+    train_set_data = torch.utils.data.DataLoader(partition_data,
+                                                 batch_size=bsz,
+                                                 shuffle=False)
+    partition_target = DataPartitioner(targets, partition_sizes)
+    partition_target = partition_target.use(dist.get_rank())
+    train_set_target = torch.utils.data.DataLoader(partition_target,
+                                                   batch_size=bsz,
+                                                   shuffle=False)
+
+    return train_set_data, train_set_target, bsz
+
+
 """ Gradient averaging. """
 
 
@@ -132,15 +155,15 @@ def run(rank, size):
     total_data = len(train_set_data)
     epochs = 10
     total_steps = epochs * total_data
-    for epoch in range(10):
+    for epoch in range(1):
         epoch_loss = 0.0
         count = 0
         for data, target in zip(train_set_data, train_set_target):
-            data = np.reshape(data, (data.shape[0], 1, data.shape[1], data.shape[2]))/ 128.0
+            data = np.reshape(data, (data.shape[0], 1, data.shape[1], data.shape[2])) / 128.0
             # print(
             #     "Data Size {}({},{}) of Rank {} : target {}, {}".format(data.shape, (data[0].numpy().dtype), type(data),
             #                                                             rank, target, len(target)))
-            #print(data[0], target[0])
+            # print(data[0], target[0])
             count = count + 1
             result = '{0:.4g}'.format((count / float(total_steps)) * 100.0)
             print("Progress {}% \r".format(result), end='\r')
@@ -148,19 +171,58 @@ def run(rank, size):
             output = model(data)
             loss = F.nll_loss(output, target)
             epoch_loss += loss.item()
-            #print(epoch_loss)
+            # print(epoch_loss)
             loss.backward()
             average_gradients(model)
             optimizer.step()
         if (rank == 0):
             print('Rank ', dist.get_rank(), ', epoch ',
                   epoch, ': ', epoch_loss / num_batches)
+    return model
+
+
+def test(rank, model, device):
+    test_set_data, test_set_target, bsz = partition_numpy_dataset_test()
+    model.eval()
+    test_loss = 0
+    correct = 0
+    # print(test_set_data)
+    total_samples = 0
+    val1 = 0
+    val2 = 0
+    count = 0
+    with torch.no_grad():
+        for data, target in zip(test_set_data, test_set_target):
+            # total_samples = total_samples + 1
+            count = count + 1
+            val1 = len(data)
+            val2 = len(test_set_data)
+            total_samples = (val1 * val2)
+            data, target = data.to(device), target.to(device)
+            data = np.reshape(data, (data.shape[0], 1, data.shape[1], data.shape[2])) / 128.0
+            output = model(data)
+            test_loss += F.nll_loss(output, target, reduction='sum').item()  # sum up batch loss
+            pred = output.argmax(dim=1, keepdim=True)  # get the index of the max log-probability
+            correct += pred.eq(target.view_as(pred)).sum().item()
+            if (rank == 0):
+                print(rank, count, len(data), len(test_set_data), data.shape, output.shape, correct, total_samples)
+
+    test_loss /= (total_samples)
+    if (rank == 0):
+        print('\nTest set: Average loss: {:.4f}, Accuracy: {}/{} ({:.0f}%)\n'.format(
+            test_loss, correct, total_samples,
+            100. * correct / (total_samples)))
 
 
 def init_processes(rank, size, fn, backend='tcp'):
     """ Initialize the distributed environment. """
     dist.init_process_group(backend, rank=rank, world_size=size)
-    fn(rank, size)
+    use_cuda = torch.cuda.is_available()
+    device = torch.device("cuda" if use_cuda else "cpu")
+    #model1 = Net()
+    #test(rank, model1, device)
+    model = fn(rank, size)
+    test(rank, model, device)
 
 
 if __name__ == "__main__":
