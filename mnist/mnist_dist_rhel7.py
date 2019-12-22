@@ -128,8 +128,15 @@ def partition_numpy_dataset_test():
 def average_gradients(model):
     size = float(dist.get_world_size())
     for param in model.parameters():
-        dist.all_reduce(param.grad.data, op=dist.reduce_op.SUM)
+        dist.all_reduce(param.grad.data, op=dist.ReduceOp.SUM)
         param.grad.data /= size
+
+
+def average_accuracy(local_accuracy):
+    size = float(dist.get_world_size())
+    dist.all_reduce(local_accuracy, op=dist.ReduceOp.SUM)
+    global_accuracy = local_accuracy / size
+    return global_accuracy
 
 
 """ Distributed Synchronous SGD Example """
@@ -203,14 +210,16 @@ def test(rank, model, device, do_log=False):
             test_loss += F.nll_loss(output, target, reduction='sum').item()  # sum up batch loss
             pred = output.argmax(dim=1, keepdim=True)  # get the index of the max log-probability
             correct += pred.eq(target.view_as(pred)).sum().item()
-            if (rank == 0):
+            if (rank == 0 and do_log):
                 print(rank, count, len(data), len(test_set_data), data.shape, output.shape, correct, total_samples)
 
     test_loss /= (total_samples)
-    if (rank == 0 and do_log):
+    local_accuracy = 100.0 * correct / total_samples
+    global_accuracy = average_accuracy(torch.tensor(local_accuracy))
+    if (rank):
         print('\nTest set: Average loss: {:.4f}, Accuracy: {}/{} ({:.0f}%)\n'.format(
             test_loss, correct, total_samples,
-            100. * correct / (total_samples)))
+            global_accuracy.numpy()))
 
 
 def init_processes(rank, size, fn, backend='tcp', do_log=False):
