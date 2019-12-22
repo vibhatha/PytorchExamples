@@ -17,6 +17,8 @@ from torch.multiprocessing import Process
 
 import numpy as np
 
+from util import LogSaver
+
 
 class Net(nn.Module):
     def __init__(self):
@@ -246,6 +248,7 @@ def init_processes(rank, size, fn, backend='tcp', do_log=False):
         local_testing_time = time.time() -  local_testing_time
         print("Total Training Time : {}".format(local_training_time))
         print("Total Testing Time : {}".format(local_testing_time))
+        LogSaver.save_log("stats.csv", stat="{},{},{}".format(size, local_training_time, local_testing_time))
 
 
 if __name__ == "__main__":
