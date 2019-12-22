@@ -102,7 +102,7 @@ def partition_numpy_dataset():
 
 
 def partition_numpy_dataset_test():
-    print("Data Loading")
+    #print("Data Loading")
     dataset = np.load("datasets/test_data.npy")
     targets = np.load("datasets/test_target.npy")
     # print("Data Size For Test {} {}".format(dataset.shape, targets.shape))
