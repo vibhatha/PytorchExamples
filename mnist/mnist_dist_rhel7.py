@@ -18,7 +18,6 @@ from torch.multiprocessing import Process
 import numpy as np
 
 
-
 class Net(nn.Module):
     def __init__(self):
         super(Net, self).__init__()
@@ -103,7 +102,7 @@ def partition_numpy_dataset():
 
 
 def partition_numpy_dataset_test():
-    #print("Data Loading")
+    # print("Data Loading")
     dataset = np.load("datasets/test_data.npy")
     targets = np.load("datasets/test_target.npy")
     # print("Data Size For Test {} {}".format(dataset.shape, targets.shape))
@@ -163,6 +162,8 @@ def run(rank, size, do_log=False):
     total_data = len(train_set_data)
     epochs = 10
     total_steps = epochs * total_data
+    local_time_communication = 0
+    local_total_time_communication = 0
     for epoch in range(20):
         epoch_loss = 0.0
         count = 0
@@ -182,12 +183,17 @@ def run(rank, size, do_log=False):
             epoch_loss += loss.item()
             # print(epoch_loss)
             loss.backward()
+            if (rank == 0):
+                local_time_communication = time.time()
             average_gradients(model)
+            if (rank == 0):
+                local_time_communication = local_time_communication - time.time()
+                local_total_time_communication = local_total_time_communication + local_time_communication
             optimizer.step()
         if (rank == 0):
             print('Rank ', dist.get_rank(), ', epoch ',
                   epoch, ': ', epoch_loss / num_batches)
-    return model
+    return model, local_total_time_communication
 
 
 def test(rank, model, device, do_log=False):
@@ -239,26 +245,28 @@ def init_processes(rank, size, fn, backend='tcp', do_log=False):
     device = torch.device("cpu")
     # model1 = Net()
     # test(rank, model1, device)
+    total_communication_time = 0
     local_training_time = 0
     local_testing_time = 0
     if (rank == 0):
         local_training_time = time.time()
-    model = fn(rank, size)
+    model, total_communication_time = fn(rank, size)
     if (rank == 0):
         local_training_time = time.time() - local_training_time
     if (rank == 0):
         local_testing_time = time.time()
     test(rank, model, device, do_log=do_log)
     if (rank == 0):
-        local_testing_time = time.time() -  local_testing_time
+        local_testing_time = time.time() - local_testing_time
         print("Total Training Time : {}".format(local_training_time))
         print("Total Testing Time : {}".format(local_testing_time))
-        save_log("stats.csv", stat="{},{},{}".format(size, local_training_time, local_testing_time))
+        save_log("stats.csv",
+                 stat="{},{},{},{}".format(size, local_training_time, total_communication_time, local_testing_time))
 
 
 if __name__ == "__main__":
     do_log = False
     world_size = int(os.environ['OMPI_COMM_WORLD_SIZE'])
     world_rank = int(os.environ['OMPI_COMM_WORLD_RANK'])
-    #print(world_rank, world_size)
+    # print(world_rank, world_size)
     init_processes(world_rank, world_size, run, backend='mpi', do_log=do_log)
