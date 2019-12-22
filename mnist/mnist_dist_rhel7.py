@@ -218,7 +218,8 @@ def init_processes(rank, size, fn, backend='tcp'):
     """ Initialize the distributed environment. """
     dist.init_process_group(backend, rank=rank, world_size=size)
     use_cuda = torch.cuda.is_available()
-    device = torch.device("cuda" if use_cuda else "cpu")
+    #device = torch.device("cuda" if use_cuda else "cpu")
+    device = torch.device("cpu")
     #model1 = Net()
     #test(rank, model1, device)
     model = fn(rank, size)
