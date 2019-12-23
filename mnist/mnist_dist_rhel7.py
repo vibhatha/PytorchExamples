@@ -187,7 +187,7 @@ def run(rank, size, do_log=False):
                 local_time_communication = time.time()
             average_gradients(model)
             if (rank == 0):
-                local_time_communication = local_time_communication - time.time()
+                local_time_communication = time.time() - local_time_communication
                 local_total_time_communication = local_total_time_communication + local_time_communication
             optimizer.step()
         if (rank == 0):
