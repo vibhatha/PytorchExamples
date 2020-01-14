@@ -189,7 +189,7 @@ def run(rank, size, do_log=False, comm=None):
     if (rank == 0):
         print("Started Training")
     total_data = len(train_set_data)
-    epochs = 1
+    epochs = 20
     total_steps = epochs * total_data
     local_time_communication = 0
     local_total_time_communication = 0
