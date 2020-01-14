@@ -35,12 +35,14 @@ Allan Streib of Future Systems, Indiana University Bloomington designed the set 
 
 ## Setting Up RHEL7 (Romeo r-003)
 
+```bash
 module load anaconda
 module load cuda/10.0
 module load cudnn/10.0-v7.4.1
 module load gcc/6.4.0
 export CUDNN_INCLUDE_DIR=/opt/cudnn-10.0-linux-x64-v7.4.1/cuda/include
 export CUDNN_LIB_DIR=/opt/cudnn-10.0-linux-x64-v7.4.1/cuda/lib64
+```
 
 ### Note
 
