@@ -168,7 +168,15 @@ def run(rank, size, do_log=False):
         epoch_loss = 0.0
         count = 0
         for data, target in zip(train_set_data, train_set_target):
+            print("Before: {} {} {} {} {} {} {}".format(data.shape, num_batches, len(train_set_data.dataset),
+                                                        len(train_set_data), len(train_set_target),
+                                                        len(train_set_target.dataset),
+                                                        target.shape))
             data = np.reshape(data, (data.shape[0], 1, data.shape[1], data.shape[2])) / 128.0
+            print("After: {} {} {} {} {} {} {}".format(data.shape, num_batches, len(train_set_data.dataset),
+                                                       len(train_set_data),
+                                                       len(train_set_target), len(train_set_target.dataset),
+                                                       target.shape))
             # print(
             #     "Data Size {}({},{}) of Rank {} : target {}, {}".format(data.shape, (data[0].numpy().dtype), type(data),
             #                                                             rank, target, len(target)))
@@ -192,7 +200,7 @@ def run(rank, size, do_log=False):
             optimizer.step()
         if (rank == 0):
             print('Rank ', dist.get_rank(), ', epoch ',
-                  epoch, ': ', epoch_loss / num_batches)
+                  epoch, ': ', epoch_loss / num_batches, 'count ', count)
     return model, local_total_time_communication
 
 

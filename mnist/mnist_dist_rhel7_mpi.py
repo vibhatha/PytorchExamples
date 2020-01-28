@@ -1,23 +1,17 @@
 from __future__ import print_function
 
+import os
 import time
-
 from math import ceil
 from random import Random
 
+import mpi4py
+import numpy as np
 import torch
+import torch.distributed as dist
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
-
-import os
-import torch
-import torch.distributed as dist
-from torch.multiprocessing import Process
-
-import numpy as np
-
-import mpi4py
 
 mpi4py.rc(initialize=False, finalize=False)
 from mpi4py import MPI
