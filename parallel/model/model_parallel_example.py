@@ -117,7 +117,7 @@ class ResNet(nn.Module):
             replace_stride_with_dilation = [False, False, False]
         if len(replace_stride_with_dilation) != 3:
             raise Exception("replace_stride_with_dilation should be None "
-                             "or a 3-element tuple, got {}".format(replace_stride_with_dilation))
+                            "or a 3-element tuple, got {}".format(replace_stride_with_dilation))
         self.groups = groups
         self.base_width = width_per_group
         self.conv1 = nn.Conv2d(3, self.inplanes, kernel_size=7, stride=2, padding=3,
@@ -241,6 +241,31 @@ class ModelParallelResNet50(ResNet):
         return self.fc(x.view(x.size(0), -1))
 
 
+class PipelineParallelResNet50(ModelParallelResNet50):
+    def __init__(self, split_size=20, *args, **kwargs):
+        super(PipelineParallelResNet50, self).__init__(*args, **kwargs)
+        self.split_size = split_size
+
+    def forward(self, x):
+        splits = iter(x.split(self.split_size, dim=0))
+        s_next = next(splits)
+        s_prev = self.seq1(s_next).to('cuda:1')
+        ret = []
+
+        for s_next in splits:
+            # A. s_prev runs on cuda:1
+            s_prev = self.seq2(s_prev)
+            ret.append(self.fc(s_prev.view(s_prev.size(0), -1)))
+
+            # B. s_next runs on cuda:0, which can run concurrently with A
+            s_prev = self.seq1(s_next).to('cuda:1')
+
+        s_prev = self.seq2(s_prev)
+        ret.append(self.fc(s_prev.view(s_prev.size(0), -1)))
+
+        return torch.cat(ret)
+
+
 num_batches = 3
 batch_size = 50
 image_w = 128
@@ -311,8 +336,41 @@ def plot(means, stds, labels, fig_name):
     plt.close(fig)
 
 
-print(mp_mean, rn_mean, mp_std, rn_std)
+
 # plot([mp_mean, rn_mean],
 #      [mp_std, rn_std],
 #      ['Model Parallel', 'Single GPU'],
 #      'mp_vs_rn.png')
+
+
+########### Pipeline Parallel ################
+
+setup = "model = PipelineParallelResNet50()"
+pp_run_times = timeit.repeat(
+    stmt, setup, number=1, repeat=num_repeat, globals=globals())
+pp_mean, pp_std = np.mean(pp_run_times), np.std(pp_run_times)
+
+
+# plot([mp_mean, rn_mean, pp_mean],
+#      [mp_std, rn_std, pp_std],
+#      ['Model Parallel', 'Single GPU', 'Pipelining Model Parallel'],
+#      'mp_vs_rn_vs_pp.png')
+
+
+##### Variable Split Sizes for Batch #####
+
+means = []
+stds = []
+split_sizes = [1, 3, 5, 8, 10, 12, 20, 40, 60]
+
+for split_size in split_sizes:
+    setup = "model = PipelineParallelResNet50(split_size=%d)" % split_size
+    pp_run_times = timeit.repeat(
+        stmt, setup, number=1, repeat=num_repeat, globals=globals())
+    means.append(np.mean(pp_run_times))
+    stds.append(np.std(pp_run_times))
+
+###########################################
+
+print("Model Parallel Mean {}, Single Node Mean{}, Pipeline Mean {} ".format(mp_mean, rn_mean, pp_mean))
+print("Pipeline Variables : {}".format(means))
