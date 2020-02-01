@@ -1,0 +1,1 @@
+mpirun -np 2 python3 task1.py : -np 2 python3 task2.py
