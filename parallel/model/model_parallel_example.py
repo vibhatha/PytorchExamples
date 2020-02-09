@@ -267,7 +267,7 @@ class PipelineParallelResNet50(ModelParallelResNet50):
 
 
 num_batches = 3
-batch_size = 50
+batch_size = 100
 image_w = 128
 image_h = 128
 
@@ -361,7 +361,7 @@ pp_mean, pp_std = np.mean(pp_run_times), np.std(pp_run_times)
 
 means = []
 stds = []
-split_sizes = [1, 3, 5, 8, 10, 12, 20, 40, 60]
+split_sizes = [1, 3, 5, 8, 10, 12, 20, 40, 60, 70, 80, 90, 100]
 
 for split_size in split_sizes:
     setup = "model = PipelineParallelResNet50(split_size=%d)" % split_size
