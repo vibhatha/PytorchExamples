@@ -290,22 +290,25 @@ def train(model):
             .scatter_(1, one_hot_indices, 1)
 
         # run forward pass
-        t1 = time.time()
-        optimizer.zero_grad()
-        outputs = model(inputs.to('cuda:0'))
-        fw_time = time.time() - t1
-        print("Output-device {}".format(outputs.device))
+        with torch.autograd.profiler.profile(use_cuda=True) as prof:
+            t1 = time.time()
+            optimizer.zero_grad()
+            outputs = model(inputs.to('cuda:0'))
+            fw_time = time.time() - t1
+            print("Output-device {}".format(outputs.device))
 
-        # run backward pass
-        t1 = time.time()
-        labels = labels.to(outputs.device)
-        label_copy_time = time.time() -t1
-        t1 = time.time()
-        loss_fn(outputs, labels).backward()
-        bw_time = time.time() - t1
-        t1 = time.time()
-        optimizer.step()
-        opt_time = time.time() - t1
+            # run backward pass
+            t1 = time.time()
+            labels = labels.to(outputs.device)
+            label_copy_time = time.time() -t1
+            t1 = time.time()
+            loss_fn(outputs, labels).backward()
+            bw_time = time.time() - t1
+            t1 = time.time()
+            optimizer.step()
+            opt_time = time.time() - t1
+
+        print(prof.key_averages().table(sort_by="self_cpu_time_total"))    
 
         print("FW {}, LBL_CP {}, BW {}, OPT {}".format(fw_time, label_copy_time, bw_time, opt_time))
 
@@ -343,7 +346,8 @@ means = []
 stds = []
 split_sizes = [1, 2, 4, 5, 10, 20, 50, 100]
 split_sizes = [1, 3, 5, 8, 10, 12, 20, 40, 60]
-split_sizes = [2, 4, 8, 10, 12, 20, 40, 60]]
+#split_sizes = [2, 4, 8, 10, 12, 20, 40, 60]
+#split_sizes = [10, 12, 20, 40, 60]
 
 for split_size in split_sizes:
     print("Split Size {}".format(split_size))
