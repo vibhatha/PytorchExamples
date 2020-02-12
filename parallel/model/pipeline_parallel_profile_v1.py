@@ -248,6 +248,14 @@ class PipelineParallelResNet50(ModelParallelResNet50):
         self.split_size = split_size
 
     def forward(self, x):
+        mb_device_0_start_time = 0
+        mb_device_0_end_time = 0
+        mb_device_1_start_time = 0
+        mb_device_1_end_time = 0
+        mb_fc_start_time = 0
+        mb_fc_end_time = 0
+        c0_c1_cp_start_time = 0
+        c0_c1_cp_end_time = 0
         seq1_time = 0
         c0_c1_copy_time = 0
         t1 = time.time()
@@ -255,53 +263,54 @@ class PipelineParallelResNet50(ModelParallelResNet50):
         t2 = time.time()
         split_time = t2 - t1
         s_next = next(splits)
-        t1 = time.time() 
+        mb_device_0_start_time = time.time()        
         s_prev = self.seq1(s_next)
-        t2 = time.time()
-        seq1_time += t2-t1
-        t1 = time.time()
+        mb_device_0_end_time = time.time()        
+        seq1_time = mb_device_0_end_time - mb_device_0_start_time        
+        c0_c1_cp_start_time = time.time()
         s_prev = s_prev.to('cuda:1')
-        t2 = time.time()
-        c0_c1_copy_time += t2 - t1
+        c0_c1_cp_end_time = time.time()        
+        c0_c1_copy_time = c0_c1_cp_end_time - c0_c1_cp_start_time
         ret = []
         seq2_time = 0
         seq_fc_time = 0
         split_id = 1
+        print(split_id,seq1_time, c0_c1_copy_time, seq2_time, mb_device_0_start_time, mb_device_0_end_time, c0_c1_cp_start_time, c0_c1_cp_end_time, mb_device_1_start_time, mb_device_1_end_time)
 
         for s_next in splits:
             # A. s_prev runs on cuda:1
-            t1 = time.time()
+            mb_device_1_start_time = time.time()
             s_prev = self.seq2(s_prev)
-            t2 = time.time()
-            seq2_time += t2 - t1
-            t1 = time.time()
+            mb_device_1_end_time = time.time()
+            seq2_time = mb_device_1_end_time - mb_device_1_start_time        
+            mb_fc_start_time = time.time()
             ret.append(self.fc(s_prev.view(s_prev.size(0), -1)))
-            t2 = time.time()
-            seq_fc_time += t2 - t1
+            mb_fc_end_time = time.time()
+            seq_fc_time = mb_fc_end_time - mb_fc_start_time
 
             # B. s_next runs on cuda:0, which can run concurrently with A
-            t1 = time.time()
+            mb_device_0_start_time = time.time()
             s_prev = self.seq1(s_next)
-            t2 = time.time()
-            seq1_time += t2 - t1
-            t1 = time.time()
+            mb_device_0_end_time = time.time()
+            seq1_time = mb_device_0_end_time - mb_device_0_start_time
+            c0_c1_cp_start_time = time.time()
             s_prev = s_prev.to('cuda:1')
-            t2 = time.time()
-            c0_c1_copy_time += t2 -t1
+            c0_c1_cp_end_time = time.time()
+            c0_c1_copy_time = c0_c1_cp_end_time - c0_c1_cp_start_time
             split_id += 1
-            print(split_id,seq1_time, c0_c1_copy_time, seq2_time)
+            print(split_id,seq1_time, c0_c1_copy_time, seq2_time, mb_device_0_start_time, mb_device_0_end_time, c0_c1_cp_start_time, c0_c1_cp_end_time, mb_device_1_start_time, mb_device_1_end_time)
 
 
-        t1 = time.time()
+        mb_device_1_start_time = time.time()
         s_prev = self.seq2(s_prev)
-        t2 = time.time()
-        seq2_time += t2 - t1
-        t1 = time.time()
+        mb_device_1_end_time = time.time()
+        seq2_time = mb_device_1_end_time - mb_device_1_start_time
+        mb_fc_start_time = time.time()
         ret.append(self.fc(s_prev.view(s_prev.size(0), -1)))
-        t2 = time.time()
-        seq_fc_time += t2 - t1
+        mb_fc_end_time = time.time()
+        seq_fc_time = mb_fc_end_time - mb_fc_start_time
         split_id += 1
-        print(split_id,seq1_time, c0_c1_copy_time, seq2_time)
+        print(split_id,seq1_time, c0_c1_copy_time, seq2_time, mb_device_0_start_time, mb_device_0_end_time, c0_c1_cp_start_time, c0_c1_cp_end_time, mb_device_1_start_time, mb_device_1_end_time)
 
         return torch.cat(ret)
 
