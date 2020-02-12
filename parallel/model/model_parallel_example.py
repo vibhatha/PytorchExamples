@@ -267,7 +267,7 @@ class PipelineParallelResNet50(ModelParallelResNet50):
 
 
 num_batches = 3
-batch_size = 100
+batch_size = 120
 image_w = 128
 image_h = 128
 
@@ -290,6 +290,7 @@ def train(model):
         # run forward pass
         optimizer.zero_grad()
         outputs = model(inputs.to('cuda:0'))
+        print("Output-device {}".format(outputs.device))
 
         # run backward pass
         labels = labels.to(outputs.device)
@@ -298,7 +299,7 @@ def train(model):
 
 
 #########
-
+print("Running Model Parallel Resnet50")
 import matplotlib.pyplot as plt
 
 plt.switch_backend('Agg')
@@ -344,6 +345,7 @@ def plot(means, stds, labels, fig_name):
 
 
 ########### Pipeline Parallel ################
+print("Running Pipeline Parallel ResNet50 Once for Split 20")
 
 setup = "model = PipelineParallelResNet50()"
 pp_run_times = timeit.repeat(
@@ -358,12 +360,14 @@ pp_mean, pp_std = np.mean(pp_run_times), np.std(pp_run_times)
 
 
 ##### Variable Split Sizes for Batch #####
-
+print("Running Pipeline Parallel ResNet50 for multiple split sizes")
 means = []
 stds = []
-split_sizes = [1, 3, 5, 8, 10, 12, 20, 40, 60, 70, 80, 90, 100]
+split_sizes = [1, 2, 4, 5, 10, 20, 50, 100]
+split_sizes = [1, 3, 5, 8, 10, 12, 20, 40, 60]
 
 for split_size in split_sizes:
+    print("Split Size {}".format(split_size))
     setup = "model = PipelineParallelResNet50(split_size=%d)" % split_size
     pp_run_times = timeit.repeat(
         stmt, setup, number=1, repeat=num_repeat, globals=globals())

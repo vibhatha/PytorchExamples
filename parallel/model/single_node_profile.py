@@ -290,26 +290,29 @@ def train(model):
             .scatter_(1, one_hot_indices, 1)
 
         # run forward pass
-        t1 = time.time()
-        optimizer.zero_grad()
-        outputs = model(inputs.to('cuda:0'))
-        t2 = time.time()
-        fw_time = (t2 - t1)
-        if _ == 0:
-            print("Output-device {}".format(outputs.device))
+        with torch.autograd.profiler.profile(use_cuda=True) as prof:
+            t1 = time.time()
+            optimizer.zero_grad()
+            outputs = model(inputs.to('cuda:0'))
+            t2 = time.time()
+            fw_time = (t2 - t1)
+            if _ == 0:
+                print("Output-device {}".format(outputs.device))
 
-        # run backward pass
-        t1 = time.time()
-        labels = labels.to(outputs.device)
-        loss_fn(outputs, labels).backward()
-        t2 = time.time()
-        bw_time = (t2 - t1)
-        optimizer.step()
-        t3 = time.time()
-        opt_time = (t3-t2)
+            # run backward pass
+            t1 = time.time()
+            labels = labels.to(outputs.device)
+            loss_fn(outputs, labels).backward()
+            t2 = time.time()
+            bw_time = (t2 - t1)
+            optimizer.step()
+            t3 = time.time()
+            opt_time = (t3-t2)
         
-        print("FW {}, BW {}, OPT {}".format(fw_time, bw_time, opt_time))
+            print("FW {}, BW {}, OPT {}".format(fw_time, bw_time, opt_time))
 
+        print(prof.key_averages().table(sort_by="self_cpu_time_total")) 
+        
 
 
 ###########################################

@@ -248,28 +248,66 @@ class PipelineParallelResNet50(ModelParallelResNet50):
         self.split_size = split_size
 
     def forward(self, x):
+        seq1_time = 0
+        c0_c1_copy_time = 0
+        t1 = time.time()
         splits = iter(x.split(self.split_size, dim=0))
+        t2 = time.time()
+        split_time = t2 - t1
         s_next = next(splits)
-        
-        s_prev = self.seq1(s_next).to('cuda:1')
+        t1 = time.time() 
+        s_prev = self.seq1(s_next)
+        t2 = time.time()
+        seq1_time += t2-t1
+        t1 = time.time()
+        s_prev = s_prev.to('cuda:1')
+        t2 = time.time()
+        c0_c1_copy_time += t2 - t1
         ret = []
+        seq2_time = 0
+        seq_fc_time = 0
+        split_id = 1
 
         for s_next in splits:
             # A. s_prev runs on cuda:1
+            t1 = time.time()
             s_prev = self.seq2(s_prev)
+            t2 = time.time()
+            seq2_time += t2 - t1
+            t1 = time.time()
             ret.append(self.fc(s_prev.view(s_prev.size(0), -1)))
+            t2 = time.time()
+            seq_fc_time += t2 - t1
 
             # B. s_next runs on cuda:0, which can run concurrently with A
-            s_prev = self.seq1(s_next).to('cuda:1')
+            t1 = time.time()
+            s_prev = self.seq1(s_next)
+            t2 = time.time()
+            seq1_time += t2 - t1
+            t1 = time.time()
+            s_prev = s_prev.to('cuda:1')
+            t2 = time.time()
+            c0_c1_copy_time += t2 -t1
+            split_id += 1
+            print(split_id,seq1_time, c0_c1_copy_time, seq2_time)
 
+
+        t1 = time.time()
         s_prev = self.seq2(s_prev)
+        t2 = time.time()
+        seq2_time += t2 - t1
+        t1 = time.time()
         ret.append(self.fc(s_prev.view(s_prev.size(0), -1)))
+        t2 = time.time()
+        seq_fc_time += t2 - t1
+        split_id += 1
+        print(split_id,seq1_time, c0_c1_copy_time, seq2_time)
 
         return torch.cat(ret)
 
 
 num_batches = 3
-batch_size = 500
+batch_size = 120
 image_w = 128
 image_h = 128
 
@@ -324,7 +362,7 @@ plt.switch_backend('Agg')
 import numpy as np
 import timeit
 
-num_repeat = 3
+num_repeat = 1
 
 stmt = "train(model)"
 
@@ -351,7 +389,7 @@ split_sizes = [1, 2, 4, 5, 10, 20, 50, 100]
 #split_sizes = [1, 3, 5, 8, 10, 12, 20, 40, 60]
 #split_sizes = [2, 4, 8, 10, 12, 20, 40, 60]
 #split_sizes = [10, 12, 20, 40, 60]
-split_sizes = [1, 2, 4]
+split_sizes = [1, 2, 3, 4, 5, 6, 8, 10, 12, 15, 20]
 
 for split_size in split_sizes:
     print("###############################################")
@@ -365,5 +403,5 @@ for split_size in split_sizes:
 
 ###########################################
 
-print("Pipeline Mean {} ".format(pp_mean))
+#print("Pipeline Mean {} ".format(pp_mean))
 print("Pipeline Variables : {}".format(means))
