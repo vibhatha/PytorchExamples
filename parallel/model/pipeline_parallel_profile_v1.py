@@ -275,7 +275,7 @@ class PipelineParallelResNet50(ModelParallelResNet50):
         seq2_time = 0
         seq_fc_time = 0
         split_id = 1
-        print(split_id,seq1_time, c0_c1_copy_time, seq2_time, mb_device_0_start_time, mb_device_0_end_time, c0_c1_cp_start_time, c0_c1_cp_end_time, mb_device_1_start_time, mb_device_1_end_time)
+        print(split_id,seq1_time, c0_c1_copy_time, seq2_time, seq_fc_time, mb_device_0_start_time, mb_device_0_end_time, c0_c1_cp_start_time, c0_c1_cp_end_time, mb_device_1_start_time, mb_device_1_end_time, mb_fc_start_time, mb_fc_end_time)
 
         for s_next in splits:
             # A. s_prev runs on cuda:1
@@ -298,7 +298,7 @@ class PipelineParallelResNet50(ModelParallelResNet50):
             c0_c1_cp_end_time = time.time()
             c0_c1_copy_time = c0_c1_cp_end_time - c0_c1_cp_start_time
             split_id += 1
-            print(split_id,seq1_time, c0_c1_copy_time, seq2_time, mb_device_0_start_time, mb_device_0_end_time, c0_c1_cp_start_time, c0_c1_cp_end_time, mb_device_1_start_time, mb_device_1_end_time)
+            print(split_id,seq1_time, c0_c1_copy_time, seq2_time, seq_fc_time, mb_device_0_start_time, mb_device_0_end_time, c0_c1_cp_start_time, c0_c1_cp_end_time, mb_device_1_start_time, mb_device_1_end_time, mb_fc_start_time, mb_fc_end_time)
 
 
         mb_device_1_start_time = time.time()
@@ -310,7 +310,7 @@ class PipelineParallelResNet50(ModelParallelResNet50):
         mb_fc_end_time = time.time()
         seq_fc_time = mb_fc_end_time - mb_fc_start_time
         split_id += 1
-        print(split_id,seq1_time, c0_c1_copy_time, seq2_time, mb_device_0_start_time, mb_device_0_end_time, c0_c1_cp_start_time, c0_c1_cp_end_time, mb_device_1_start_time, mb_device_1_end_time)
+        print(split_id,seq1_time, c0_c1_copy_time, seq2_time, seq_fc_time, mb_device_0_start_time, mb_device_0_end_time, c0_c1_cp_start_time, c0_c1_cp_end_time, mb_device_1_start_time, mb_device_1_end_time, mb_fc_start_time, mb_fc_end_time)
 
         return torch.cat(ret)
 
