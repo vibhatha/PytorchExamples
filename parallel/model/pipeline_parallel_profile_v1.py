@@ -292,7 +292,7 @@ class PipelineParallelResNet50(ModelParallelResNet50):
         seq_fc_time = 0
         seq_fc_datetime = datetime.now()
         split_id = 1
-        print(split_id,seq1_time, c0_c1_copy_time, seq2_time, seq_fc_time, mb_device_0_start_time, mb_device_0_end_time, c0_c1_cp_start_time, c0_c1_cp_end_time, mb_device_1_start_time, mb_device_1_end_time, mb_fc_start_time, mb_fc_end_time, mb_device_0_start_datetime, mb_device_0_end_datetime, c0_c1_cp_start_datetime, c0_c1_cp_end_datetime, mb_device_1_start_datetime, mb_device_1_end_datetime, mb_fc_start_datetime, mb_fc_end_datetime)
+        print("{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{}".format(split_id,seq1_time, c0_c1_copy_time, seq2_time, seq_fc_time, mb_device_0_start_time, mb_device_0_end_time, c0_c1_cp_start_time, c0_c1_cp_end_time, mb_device_1_start_time, mb_device_1_end_time, mb_fc_start_time, mb_fc_end_time, mb_device_0_start_datetime, mb_device_0_end_datetime, c0_c1_cp_start_datetime, c0_c1_cp_end_datetime, mb_device_1_start_datetime, mb_device_1_end_datetime, mb_fc_start_datetime, mb_fc_end_datetime))
 
         for s_next in splits:
             # A. s_prev runs on cuda:1
@@ -323,7 +323,8 @@ class PipelineParallelResNet50(ModelParallelResNet50):
             c0_c1_cp_end_datetime = datetime.now()
             c0_c1_copy_time = c0_c1_cp_end_time - c0_c1_cp_start_time
             split_id += 1
-            print(split_id,seq1_time, c0_c1_copy_time, seq2_time, seq_fc_time, mb_device_0_start_time, mb_device_0_end_time, c0_c1_cp_start_time, c0_c1_cp_end_time, mb_device_1_start_time, mb_device_1_end_time, mb_fc_start_time, mb_fc_end_time, mb_device_0_start_datetime, mb_device_0_end_datetime, c0_c1_cp_start_datetime, c0_c1_cp_end_datetime, mb_device_1_start_datetime, mb_device_1_end_datetime, mb_fc_start_datetime, mb_fc_end_datetime)
+            print("{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{}".format(split_id,seq1_time, c0_c1_copy_time, seq2_time, seq_fc_time, mb_device_0_start_time, mb_device_0_end_time, c0_c1_cp_start_time, c0_c1_cp_end_time, mb_device_1_start_time, mb_device_1_end_time, mb_fc_start_time, mb_fc_end_time, mb_device_0_start_datetime, mb_device_0_end_datetime, c0_c1_cp_start_datetime, c0_c1_cp_end_datetime, mb_device_1_start_datetime, mb_device_1_end_datetime, mb_fc_start_datetime, mb_fc_end_datetime))
+            #print(split_id,seq1_time, c0_c1_copy_time, seq2_time, seq_fc_time, mb_device_0_start_time, mb_device_0_end_time, c0_c1_cp_start_time, c0_c1_cp_end_time, mb_device_1_start_time, mb_device_1_end_time, mb_fc_start_time, mb_fc_end_time, mb_device_0_start_datetime, mb_device_0_end_datetime, c0_c1_cp_start_datetime, c0_c1_cp_end_datetime, mb_device_1_start_datetime, mb_device_1_end_datetime, mb_fc_start_datetime, mb_fc_end_datetime)
 
 
         mb_device_1_start_time = time.time()
@@ -339,7 +340,8 @@ class PipelineParallelResNet50(ModelParallelResNet50):
         mb_fc_end_datetime = datetime.now()
         seq_fc_time = mb_fc_end_time - mb_fc_start_time
         split_id += 1
-        print(split_id,seq1_time, c0_c1_copy_time, seq2_time, seq_fc_time, mb_device_0_start_time, mb_device_0_end_time, c0_c1_cp_start_time, c0_c1_cp_end_time, mb_device_1_start_time, mb_device_1_end_time, mb_fc_start_time, mb_fc_end_time, mb_device_0_start_datetime, mb_device_0_end_datetime, c0_c1_cp_start_datetime, c0_c1_cp_end_datetime, mb_device_1_start_datetime, mb_device_1_end_datetime, mb_fc_start_datetime, mb_fc_end_datetime)
+        #print(split_id,seq1_time, c0_c1_copy_time, seq2_time, seq_fc_time, mb_device_0_start_time, mb_device_0_end_time, c0_c1_cp_start_time, c0_c1_cp_end_time, mb_device_1_start_time, mb_device_1_end_time, mb_fc_start_time, mb_fc_end_time, mb_device_0_start_datetime, mb_device_0_end_datetime, c0_c1_cp_start_datetime, c0_c1_cp_end_datetime, mb_device_1_start_datetime, mb_device_1_end_datetime, mb_fc_start_datetime, mb_fc_end_datetime)
+        print("{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{}".format(split_id,seq1_time, c0_c1_copy_time, seq2_time, seq_fc_time, mb_device_0_start_time, mb_device_0_end_time, c0_c1_cp_start_time, c0_c1_cp_end_time, mb_device_1_start_time, mb_device_1_end_time, mb_fc_start_time, mb_fc_end_time, mb_device_0_start_datetime, mb_device_0_end_datetime, c0_c1_cp_start_datetime, c0_c1_cp_end_datetime, mb_device_1_start_datetime, mb_device_1_end_datetime, mb_fc_start_datetime, mb_fc_end_datetime))
 
         return torch.cat(ret)
 
