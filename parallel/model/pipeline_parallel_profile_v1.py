@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 import time
+from datetime import datetime, date, time
 
 
 def conv1x1(in_planes, out_planes, stride=1):
@@ -249,68 +250,96 @@ class PipelineParallelResNet50(ModelParallelResNet50):
 
     def forward(self, x):
         mb_device_0_start_time = 0
+        mb_device_0_start_datetime = datetime.now()
         mb_device_0_end_time = 0
+        mb_device_0_end_datetime = datetime.now()
         mb_device_1_start_time = 0
+        mb_device_1_start_datetime = datetime.now()
         mb_device_1_end_time = 0
+        mb_device_1_end_datetime = datetime.now()
         mb_fc_start_time = 0
+        mb_fc_start_datetime = datetime.now()
         mb_fc_end_time = 0
+        mb_fc_end_datetime = datetime.now()
         c0_c1_cp_start_time = 0
+        co_c1_cp_start_datetime = datetime.now()
         c0_c1_cp_end_time = 0
+        c0_c1_cp_end_datetime = datetime.now()
         seq1_time = 0
+        seq1_datetime = datetime.now()
         c0_c1_copy_time = 0
+        co_c1_copy_datetime = datetime.now()
         t1 = time.time()
         splits = iter(x.split(self.split_size, dim=0))
         t2 = time.time()
         split_time = t2 - t1
         s_next = next(splits)
         mb_device_0_start_time = time.time()        
+        mb_device_0_start_datetime = datetime.now()
         s_prev = self.seq1(s_next)
         mb_device_0_end_time = time.time()        
+        mb_device_0_end_datetime = datetime.now()
         seq1_time = mb_device_0_end_time - mb_device_0_start_time        
         c0_c1_cp_start_time = time.time()
+        c0_c1_cp_start_datetime = datetime.now()
         s_prev = s_prev.to('cuda:1')
         c0_c1_cp_end_time = time.time()        
+        c0_c1_cp_end_datetime = datetime.now()
         c0_c1_copy_time = c0_c1_cp_end_time - c0_c1_cp_start_time
         ret = []
         seq2_time = 0
+        seq2_datetime = datetime.now()
         seq_fc_time = 0
+        seq_fc_datetime = datetime.now()
         split_id = 1
-        print(split_id,seq1_time, c0_c1_copy_time, seq2_time, seq_fc_time, mb_device_0_start_time, mb_device_0_end_time, c0_c1_cp_start_time, c0_c1_cp_end_time, mb_device_1_start_time, mb_device_1_end_time, mb_fc_start_time, mb_fc_end_time)
+        print(split_id,seq1_time, c0_c1_copy_time, seq2_time, seq_fc_time, mb_device_0_start_time, mb_device_0_end_time, c0_c1_cp_start_time, c0_c1_cp_end_time, mb_device_1_start_time, mb_device_1_end_time, mb_fc_start_time, mb_fc_end_time, mb_device_0_start_datetime, mb_device_0_end_datetime, c0_c1_cp_start_datetime, c0_c1_cp_end_datetime, mb_device_1_start_datetime, mb_device_1_end_datetime, mb_fc_start_datetime, mb_fc_end_datetime)
 
         for s_next in splits:
             # A. s_prev runs on cuda:1
             mb_device_1_start_time = time.time()
+            mb_device_1_start_datetime = datetime.now()
             s_prev = self.seq2(s_prev)
             mb_device_1_end_time = time.time()
+            mb_device_1_end_datetime = datetime.now()
             seq2_time = mb_device_1_end_time - mb_device_1_start_time        
             mb_fc_start_time = time.time()
+            mb_fc_start_datetime = datetime.now()
             ret.append(self.fc(s_prev.view(s_prev.size(0), -1)))
             mb_fc_end_time = time.time()
+            mb_fc_end_datetime = datetime.now()
             seq_fc_time = mb_fc_end_time - mb_fc_start_time
 
             # B. s_next runs on cuda:0, which can run concurrently with A
             mb_device_0_start_time = time.time()
+            mb_device_0_start_datetime = datetime.now()
             s_prev = self.seq1(s_next)
             mb_device_0_end_time = time.time()
+            mb_device_0_end_datetime = datetime.now()
             seq1_time = mb_device_0_end_time - mb_device_0_start_time
             c0_c1_cp_start_time = time.time()
+            c0_c1_cp_start_datetime = datetime.now()
             s_prev = s_prev.to('cuda:1')
             c0_c1_cp_end_time = time.time()
+            c0_c1_cp_end_datetime = datetime.now()
             c0_c1_copy_time = c0_c1_cp_end_time - c0_c1_cp_start_time
             split_id += 1
-            print(split_id,seq1_time, c0_c1_copy_time, seq2_time, seq_fc_time, mb_device_0_start_time, mb_device_0_end_time, c0_c1_cp_start_time, c0_c1_cp_end_time, mb_device_1_start_time, mb_device_1_end_time, mb_fc_start_time, mb_fc_end_time)
+            print(split_id,seq1_time, c0_c1_copy_time, seq2_time, seq_fc_time, mb_device_0_start_time, mb_device_0_end_time, c0_c1_cp_start_time, c0_c1_cp_end_time, mb_device_1_start_time, mb_device_1_end_time, mb_fc_start_time, mb_fc_end_time, mb_device_0_start_datetime, mb_device_0_end_datetime, c0_c1_cp_start_datetime, c0_c1_cp_end_datetime, mb_device_1_start_datetime, mb_device_1_end_datetime, mb_fc_start_datetime, mb_fc_end_datetime)
 
 
         mb_device_1_start_time = time.time()
         s_prev = self.seq2(s_prev)
+        mb_device_1_start_datetime = datetime.now()
         mb_device_1_end_time = time.time()
+        mb_device_1_end_datetime = datetime.now()
         seq2_time = mb_device_1_end_time - mb_device_1_start_time
         mb_fc_start_time = time.time()
+        mb_fc_start_datetime = datetime.now()
         ret.append(self.fc(s_prev.view(s_prev.size(0), -1)))
         mb_fc_end_time = time.time()
+        mb_fc_end_datetime = datetime.now()
         seq_fc_time = mb_fc_end_time - mb_fc_start_time
         split_id += 1
-        print(split_id,seq1_time, c0_c1_copy_time, seq2_time, seq_fc_time, mb_device_0_start_time, mb_device_0_end_time, c0_c1_cp_start_time, c0_c1_cp_end_time, mb_device_1_start_time, mb_device_1_end_time, mb_fc_start_time, mb_fc_end_time)
+        print(split_id,seq1_time, c0_c1_copy_time, seq2_time, seq_fc_time, mb_device_0_start_time, mb_device_0_end_time, c0_c1_cp_start_time, c0_c1_cp_end_time, mb_device_1_start_time, mb_device_1_end_time, mb_fc_start_time, mb_fc_end_time, mb_device_0_start_datetime, mb_device_0_end_datetime, c0_c1_cp_start_datetime, c0_c1_cp_end_datetime, mb_device_1_start_datetime, mb_device_1_end_datetime, mb_fc_start_datetime, mb_fc_end_datetime)
 
         return torch.cat(ret)
 
