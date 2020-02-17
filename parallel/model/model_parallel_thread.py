@@ -272,7 +272,7 @@ class PipelineParallelResNet50(ModelParallelResNet50):
         return torch.cat(ret)
 
 
-num_batches = 3
+num_batches = 1
 batch_size = 120
 image_w = 128
 image_h = 128
@@ -368,7 +368,7 @@ print("Running Pipeline Parallel ResNet50 for multiple split sizes")
 means = []
 stds = []
 split_sizes = [1, 2, 4, 5, 10, 20, 50, 100]
-split_sizes = [1, 3, 5, 8, 10, 12, 20, 40, 60]
+split_sizes = [1, 3, 5, 8, 10, 12, 15, 20, 30, 40, 60]
 
 for split_size in split_sizes:
     print("Split Size {}".format(split_size))
