@@ -78,7 +78,7 @@ class AlexNet(nn.Module):
 
 class ModelParallelAlexNet(AlexNet):
 
-    def __init__(self, num_classes=1000):
+    def __init__(self, num_classes=1000, devices=['cuda:0', 'cuda:1']):
         super(ModelParallelAlexNet, self).__init__(num_classes=num_classes)
         self.seq1 = nn.Sequential(
             self.conv1,
@@ -95,7 +95,7 @@ class ModelParallelAlexNet(AlexNet):
             self.relu5,
             self.maxpool3,
             self.avgpool
-        ).to('cuda:0')
+        ).to(devices[0])
         #
         # self.pool = nn.Sequential(
         #     self.avgpool
@@ -108,12 +108,12 @@ class ModelParallelAlexNet(AlexNet):
             self.dropout2,
             self.fc2,
             self.fc2_relu,
-        ).to('cuda:1')
+        ).to(devices[0])
 
-        self.fc3.to('cuda:1')
+        self.fc3.to(devices[0])
 
     def forward(self, x):
-        x = self.seq2(torch.flatten(self.seq1(x), 1).to('cuda:1'))
+        x = self.seq2(torch.flatten(self.seq1(x), 1).to('cuda:0'))
         return self.fc3(x)
 
 
