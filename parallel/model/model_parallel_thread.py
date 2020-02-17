@@ -296,7 +296,7 @@ def train(model):
         # run forward pass
         optimizer.zero_grad()
         outputs = model(inputs.to('cuda:0'))
-        print("Output-device {}".format(outputs.device))
+        #print("Output-device {}".format(outputs.device))
 
         # run backward pass
         labels = labels.to(outputs.device)
@@ -312,7 +312,7 @@ plt.switch_backend('Agg')
 import numpy as np
 import timeit
 
-num_repeat = 10
+num_repeat = 3
 
 stmt = "train(model)"
 
