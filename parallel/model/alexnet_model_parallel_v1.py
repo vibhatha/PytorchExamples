@@ -70,12 +70,13 @@ class ModelParallelAlexNet(AlexNet):
             self.conv5,
             self.relu5,
             self.maxpool3,
-
-        ).to(devices_layer_mapping[0])
-
-        self.pool = nn.Sequential(
             self.avgpool
+
         ).to(devices_layer_mapping[0])
+        #
+        # self.pool = nn.Sequential(
+        #     self.avgpool
+        # ).to(devices_layer_mapping[0])
 
         self.classifier = nn.Sequential(
             self.dropout1,
@@ -89,7 +90,6 @@ class ModelParallelAlexNet(AlexNet):
 
     def forward(self, x):
         x = self.features(x)
-        x = self.pool(x)
         x = torch.flatten(x, 1).to('cuda:1')
         x = self.classifier(x)
         return x
