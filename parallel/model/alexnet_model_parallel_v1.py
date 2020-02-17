@@ -69,7 +69,7 @@ class ModelParallelAlexNet(AlexNet):
             self.relu4,
             self.conv5,
             self.relu5,
-            self.maxpool5,
+            self.maxpool3,
 
         ).to(devices_layer_mapping[0])
 
