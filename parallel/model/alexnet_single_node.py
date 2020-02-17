@@ -51,7 +51,7 @@ num_batches = 1
 batch_size = 120
 image_w = 128
 image_h = 128
-num_repeat = 3
+num_repeat = 20
 
 cuda_available = torch.cuda.is_available()
 
@@ -97,9 +97,15 @@ if cuda_available:
 else:
     setup = "model = AlexNet(num_classes=num_classes)"
 
-rn_run_times = timeit.repeat(
-    stmt, setup, number=1, repeat=num_repeat, globals=globals())
-rn_mean, rn_std = np.mean(rn_run_times), np.std(rn_run_times)
+stats = []
 
+for i in range(10):
+    rn_run_times = timeit.repeat(stmt, setup, number=1, repeat=num_repeat, globals=globals())
+    rn_mean, rn_std = np.mean(rn_run_times), np.std(rn_run_times)
+    stats.append(rn_mean)
+    print("Single Node Training Time:", rn_mean)
 
-print("Single Node Training Time:", rn_mean)
+stats_ar = np.array(stats)
+
+print(" Mean Training Time {}".format(stats_ar.mean()))
+
