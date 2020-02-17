@@ -55,6 +55,10 @@ num_repeat = 3
 
 cuda_available = torch.cuda.is_available()
 
+print("===================================================")
+print("Cuda Available : {}".format(cuda_available))
+print("===================================================")
+
 
 def train(model):
     model.train(True)
@@ -89,7 +93,7 @@ stmt = "train(model)"
 setup = None
 
 if cuda_available:
-    setup = "model = AlexNet(num_classes=num_classes).to('cuda:0'"
+    setup = "model = AlexNet(num_classes=num_classes).to('cuda:0')"
 else:
     setup = "model = AlexNet(num_classes=num_classes)"
 
