@@ -2,6 +2,8 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 import threading
+import torch.multiprocessing as mp
+
 
 def conv1x1(in_planes, out_planes, stride=1):
     """1x1 convolution"""
@@ -261,12 +263,15 @@ class PipelineParallelResNet50(ModelParallelResNet50):
 
         for s_next in splits:
             # A. s_prev runs on cuda:1
-            #self.taskA(s_prev=s_prev, ret=ret)
-            x = threading.Thread(target=self.taskA, args=(s_prev,ret))
-            x.start()
+            # self.taskA(s_prev=s_prev, ret=ret)
+            #x = threading.Thread(target=self.taskA, args=(s_prev, ret))
+            #x.start()
+            p = mp.Process(target=self.taskA, args=(s_prev, ret))
+            p.start()
+
             # B. s_next runs on cuda:0, which can run concurrently with A
             self.taskB(s_next=s_next)
-            x.join()
+            p.join()
 
         s_prev = self.seq2(s_prev)
         ret.append(self.fc(s_prev.view(s_prev.size(0), -1)))
@@ -298,7 +303,7 @@ def train(model):
         # run forward pass
         optimizer.zero_grad()
         outputs = model(inputs.to('cuda:0'))
-        #print("Output-device {}".format(outputs.device))
+        # print("Output-device {}".format(outputs.device))
 
         # run backward pass
         labels = labels.to(outputs.device)
@@ -316,7 +321,7 @@ import timeit
 
 num_repeat = 3
 
-stmt = "train(model)"
+stmt = "train(model.share_memory())"
 
 setup = "model = ModelParallelResNet50()"
 # globals arg is only available in Python 3. In Python 2, use the following
