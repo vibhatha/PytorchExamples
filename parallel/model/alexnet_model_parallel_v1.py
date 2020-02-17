@@ -54,7 +54,7 @@ class AlexNet(nn.Module):
 
 class ModelParallelAlexNet(AlexNet):
 
-    def __init__(self, num_classes, devices_layer_mapping=['cuda:0', 'cuda:1']):
+    def __init__(self, num_classes):
         super(ModelParallelAlexNet, self).__init__(num_classes=num_classes)
         self.features = nn.Sequential(
             self.conv1,
@@ -71,8 +71,7 @@ class ModelParallelAlexNet(AlexNet):
             self.relu5,
             self.maxpool3,
             self.avgpool
-
-        ).to(devices_layer_mapping[0])
+            ).to('cuda:0')
         #
         # self.pool = nn.Sequential(
         #     self.avgpool
@@ -86,7 +85,7 @@ class ModelParallelAlexNet(AlexNet):
             self.fc2,
             self.fc2_relu,
             self.fc3
-        ).to(devices_layer_mapping[1])
+            ).to('cuda:1')
 
     def forward(self, x):
         x = self.features(x)
@@ -130,7 +129,7 @@ def train(model):
             outputs = model(inputs.to('cuda:0'))
         else:
             outputs = model(inputs)
-        # print("Output-device {}".format(outputs.device))
+        print("Output-device {}".format(outputs.device))
 
         # run backward pass
         labels = labels.to(outputs.device)
