@@ -506,7 +506,7 @@ stmt = "train(model)"
 
 for version in range(7):
     setup = "model = ModelParallelAlexNetV{}(num_classes=num_classes)".format(
-        version)
+        version+1)
 
     rn_run_times = timeit.repeat(
         stmt, setup, number=1, repeat=num_repeat, globals=globals())
