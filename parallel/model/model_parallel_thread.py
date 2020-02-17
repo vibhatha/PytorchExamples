@@ -261,10 +261,12 @@ class PipelineParallelResNet50(ModelParallelResNet50):
 
         for s_next in splits:
             # A. s_prev runs on cuda:1
-            self.taskA(s_prev=s_prev, ret=ret)
-
+            #self.taskA(s_prev=s_prev, ret=ret)
+            x = threading.Thread(target=self.taskA, args=(s_prev,ret))
+            x.start()
             # B. s_next runs on cuda:0, which can run concurrently with A
             self.taskB(s_next=s_next)
+            x.join()
 
         s_prev = self.seq2(s_prev)
         ret.append(self.fc(s_prev.view(s_prev.size(0), -1)))
