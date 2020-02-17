@@ -111,4 +111,4 @@ mean = stats_ar.mean()
 print(" Mean Training Time {}".format(mean))
 
 with open('stats_alexnet_s_v1.csv', 'a+') as fp:
-    fp.write(mean + "\n")
+    fp.write(str(mean) + "\n")

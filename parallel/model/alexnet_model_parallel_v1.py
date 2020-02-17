@@ -531,5 +531,5 @@ print("Error(s): ", std2)
 
 with open('stats_alexnet_mp_v1.csv', 'a+') as fp:
     for id, value in enumerate(mean2):
-        fp.write(id + ",")
+        fp.write(str(value) + ",")
     fp.write("\n")
