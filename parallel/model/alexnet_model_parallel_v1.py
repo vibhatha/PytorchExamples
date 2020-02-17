@@ -462,7 +462,7 @@ class ModelParallelAlexNetV7(AlexNet):
 
 
 num_classes = 1000
-num_batches = 1
+num_batches = 10
 batch_size = 120
 image_w = 128
 image_h = 128

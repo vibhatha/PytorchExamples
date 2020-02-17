@@ -47,7 +47,7 @@ class AlexNet(nn.Module):
 
 
 num_classes = 1000
-num_batches = 1
+num_batches = 10
 batch_size = 120
 image_w = 128
 image_h = 128
@@ -81,7 +81,7 @@ def train(model):
             outputs = model(inputs.to('cuda:0'))
         else:
             outputs = model(inputs)
-        #print("Output-device {}".format(outputs.device))
+        # print("Output-device {}".format(outputs.device))
 
         # run backward pass
         labels = labels.to(outputs.device)
@@ -100,7 +100,8 @@ else:
 stats = []
 
 for i in range(10):
-    rn_run_times = timeit.repeat(stmt, setup, number=1, repeat=num_repeat, globals=globals())
+    rn_run_times = timeit.repeat(stmt, setup, number=1, repeat=num_repeat,
+                                 globals=globals())
     rn_mean, rn_std = np.mean(rn_run_times), np.std(rn_run_times)
     stats.append(rn_mean)
     print("Single Node Training Time:", rn_mean)
@@ -108,4 +109,3 @@ for i in range(10):
 stats_ar = np.array(stats)
 
 print(" Mean Training Time {}".format(stats_ar.mean()))
-
