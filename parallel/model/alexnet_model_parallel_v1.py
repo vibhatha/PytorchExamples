@@ -221,7 +221,7 @@ num_batches = 1
 batch_size = 120
 image_w = 128
 image_h = 128
-num_repeat = 3
+num_repeat = 10
 
 cuda_available = torch.cuda.is_available()
 
