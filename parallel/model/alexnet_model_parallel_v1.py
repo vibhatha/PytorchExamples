@@ -125,10 +125,8 @@ def train(model):
 
         # run forward pass
         optimizer.zero_grad()
-        if cuda_available:
-            outputs = model(inputs.to('cuda:0'))
-        else:
-            outputs = model(inputs)
+        outputs = model(inputs.to('cuda:0'))
+
         print("Output-device {}".format(outputs.device))
 
         # run backward pass
@@ -138,12 +136,8 @@ def train(model):
 
 
 stmt = "train(model)"
-setup = None
 
-if cuda_available:
-    setup = "model = ModelParallelAlexNet(num_classes=num_classes).to('cuda:0')"
-else:
-    setup = "model = ModelParallelAlexNet(num_classes=num_classes)"
+setup = "model = ModelParallelAlexNet(num_classes=num_classes).to('cuda:0')"
 
 rn_run_times = timeit.repeat(
     stmt, setup, number=1, repeat=num_repeat, globals=globals())
