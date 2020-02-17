@@ -107,5 +107,8 @@ for i in range(10):
     print("Single Node Training Time:", rn_mean)
 
 stats_ar = np.array(stats)
+mean = stats_ar.mean()
+print(" Mean Training Time {}".format(mean))
 
-print(" Mean Training Time {}".format(stats_ar.mean()))
+with open('stats_alexnet_s_v1.csv', 'a+') as fp:
+    fp.write(mean + "\n")

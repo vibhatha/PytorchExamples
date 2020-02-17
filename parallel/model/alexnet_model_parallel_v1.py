@@ -528,3 +528,8 @@ mean2 = summary_ar.mean(axis=0)
 std2 = summary_ar.std(axis=0)
 print("Average Time(s): ", mean2)
 print("Error(s): ", std2)
+
+with open('stats_alexnet_mp_v1.csv', 'a+') as fp:
+    for id, value in enumerate(mean2):
+        fp.write(id + ",")
+    fp.write("\n")
