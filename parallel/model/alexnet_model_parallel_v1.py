@@ -108,12 +108,12 @@ class ModelParallelAlexNet(AlexNet):
             self.dropout2,
             self.fc2,
             self.fc2_relu,
-        ).to(devices[0])
+        ).to(devices[1])
 
-        self.fc3.to(devices[0])
+        self.fc3.to(devices[1])
 
     def forward(self, x):
-        x = self.seq2(torch.flatten(self.seq1(x), 1).to('cuda:0'))
+        x = self.seq2(torch.flatten(self.seq1(x), 1).to('cuda:1'))
         return self.fc3(x)
 
 
@@ -150,7 +150,7 @@ def train(model):
         optimizer.zero_grad()
         outputs = model(inputs.to('cuda:0'))
 
-        print("Output-device {}".format(outputs.device))
+        #print("Output-device {}".format(outputs.device))
 
         # run backward pass
         labels = labels.to(outputs.device)
@@ -158,12 +158,15 @@ def train(model):
         optimizer.step()
 
 
+
+
 stmt = "train(model)"
 
-setup = "model = ModelParallelAlexNet(num_classes=num_classes).to('cuda:0')"
+setup = "model = ModelParallelAlexNet(num_classes=num_classes)"
 
 rn_run_times = timeit.repeat(
-    stmt, setup, number=1, repeat=num_repeat, globals=globals())
+            stmt, setup, number=1, repeat=num_repeat, globals=globals())
 rn_mean, rn_std = np.mean(rn_run_times), np.std(rn_run_times)
 
 print("Model Parallel Training Time:", rn_mean)
+

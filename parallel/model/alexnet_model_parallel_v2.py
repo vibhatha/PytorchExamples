@@ -93,7 +93,7 @@ stmt = "train(model)"
 setup = None
 
 if cuda_available:
-    setup = "model = AlexNet(num_classes=num_classes).to('cuda:0')"
+    setup = "model = AlexNet(num_classes=num_classes)"
 else:
     setup = "model = AlexNet(num_classes=num_classes)"
 
