@@ -168,7 +168,7 @@ class ModelParallelAlexNetV3(AlexNet):
 
     def __init__(self, num_classes=1000, devices=['cuda:0', 'cuda:1',
                                                   'cuda:2', 'cuda:3']):
-        super(ModelParallelAlexNetV2, self).__init__(num_classes=num_classes)
+        super(ModelParallelAlexNetV3, self).__init__(num_classes=num_classes)
         self.seq1 = nn.Sequential(
             self.conv1,
             self.relu1,
