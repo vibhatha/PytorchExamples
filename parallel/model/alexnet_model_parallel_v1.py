@@ -522,9 +522,9 @@ for i in range(10):
             rn_mean))
     all_stats.append(per_run_stats)
 
-
 summary_ar = np.array(all_stats)
 
 mean2 = summary_ar.mean(axis=0)
-
-print(mean2)
+std2 = summary_ar.std(axis=0)
+print("Average Time(s): ", mean2)
+print("Error(s): ", std2)
