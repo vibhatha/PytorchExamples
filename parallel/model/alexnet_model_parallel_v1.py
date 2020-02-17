@@ -117,6 +117,54 @@ class ModelParallelAlexNet(AlexNet):
         return self.fc3(x)
 
 
+class ModelParallelAlexNetV2(AlexNet):
+
+    def __init__(self, num_classes=1000, devices=['cuda:0', 'cuda:1',
+                                                  'cuda:2']):
+        super(ModelParallelAlexNet, self).__init__(num_classes=num_classes)
+        self.seq1 = nn.Sequential(
+            self.conv1,
+            self.relu1,
+            self.maxpool1,
+            self.conv2,
+            self.relu2,
+            self.maxpool2,
+        ).to(devices[0])
+
+        self.seq2 = nn.Sequential(
+            self.conv3,
+            self.relu3,
+            self.conv4,
+            self.relu4,
+            self.conv5,
+            self.relu5,
+            self.maxpool3,
+            self.avgpool
+        ).to(devices[1])
+
+        #
+        # self.pool = nn.Sequential(
+        #     self.avgpool
+        # ).to(devices_layer_mapping[0])
+
+        self.seq3 = nn.Sequential(
+            self.dropout1,
+            self.fc1,
+            self.fc1_relu,
+            self.dropout2,
+            self.fc2,
+            self.fc2_relu,
+        ).to(devices[2])
+
+        self.fc3.to(devices[2])
+
+    def forward(self, x):
+        x = self.seq1(x).to('cuda:1')
+        x = self.seq3(torch.flatten(self.seq2(x), 1).to('cuda:2'))
+        return self.fc3(x)
+
+
+
 num_classes = 1000
 num_batches = 1
 batch_size = 120
@@ -169,4 +217,16 @@ rn_run_times = timeit.repeat(
 rn_mean, rn_std = np.mean(rn_run_times), np.std(rn_run_times)
 
 print("Model Parallel Training Time:", rn_mean)
+
+###############################################################################
+
+stmt = "train(model)"
+
+setup = "model = ModelParallelAlexNetV2(num_classes=num_classes)"
+
+rn_run_times = timeit.repeat(
+            stmt, setup, number=1, repeat=num_repeat, globals=globals())
+rn_mean, rn_std = np.mean(rn_run_times), np.std(rn_run_times)
+
+print("Model Parallel V2 Training Time:", rn_mean)
 
