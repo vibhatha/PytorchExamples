@@ -56,7 +56,7 @@ class ModelParallelAlexNet(AlexNet):
 
     def __init__(self, num_classes):
         super(ModelParallelAlexNet, self).__init__(num_classes=num_classes)
-        self.features = nn.Sequential(
+        self.seq1 = nn.Sequential(
             self.conv1,
             self.relu1,
             self.maxpool1,
@@ -77,22 +77,21 @@ class ModelParallelAlexNet(AlexNet):
         #     self.avgpool
         # ).to(devices_layer_mapping[0])
 
-        self.classifier = nn.Sequential(
+        self.seq2 = nn.Sequential(
             self.dropout1,
             self.fc1,
             self.fc1_relu,
             self.dropout2,
             self.fc2,
-            self.fc2_relu,
-            self.fc3
+            self.fc2_relu,            
             ).to('cuda:1')
 
-    def forward(self, x):
-        x = self.features(x)
-        x = torch.flatten(x, 1).to('cuda:1')
-        x = self.classifier(x)
-        return x
+        self.fc3.to('cuda:1')
 
+    def forward(self, x):
+        x = self.seq2(self.seq1(x).to('cuda:1'))
+        return self.fc3(torch.flatten(x,1))
+        
 
 num_classes = 1000
 num_batches = 1
