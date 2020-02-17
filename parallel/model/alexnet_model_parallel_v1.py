@@ -512,6 +512,6 @@ for version in range(7):
         stmt, setup, number=1, repeat=num_repeat, globals=globals())
     rn_mean, rn_std = np.mean(rn_run_times), np.std(rn_run_times)
 
-    print("Devices {}: Model Parallel V{} Training Time: {}", version,
+    print("Devices {}: Model Parallel V{} Training Time: {}".format(version,
           str(version + 1),
-          rn_mean)
+          rn_mean) )
