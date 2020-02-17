@@ -197,7 +197,7 @@ class ModelParallelAlexNetV3(AlexNet):
         #     self.avgpool
         # ).to(devices_layer_mapping[0])
 
-        self.seq3 = nn.Sequential(
+        self.seq4 = nn.Sequential(
             self.dropout1,
             self.fc1,
             self.fc1_relu,
@@ -211,7 +211,7 @@ class ModelParallelAlexNetV3(AlexNet):
     def forward(self, x):
         x = self.seq1(x).to('cuda:1')
         x = self.seq2(x).to('cuda:2')
-        x = self.seq3(torch.flatten(self.seq2(x), 1).to('cuda:3'))
+        x = self.seq4(torch.flatten(self.seq3(x), 1).to('cuda:3'))
         return self.fc3(x)
 
 
