@@ -466,7 +466,7 @@ num_batches = 1
 batch_size = 120
 image_w = 128
 image_h = 128
-num_repeat = 10
+num_repeat = 20
 
 cuda_available = torch.cuda.is_available()
 
@@ -503,15 +503,28 @@ def train(model):
 
 
 stmt = "train(model)"
+major_repitition = []
+all_stats = []
 
-for version in range(7):
-    setup = "model = ModelParallelAlexNetV{}(num_classes=num_classes)".format(
-        version+1)
+for i in range(10):
+    per_run_stats = []
+    for version in range(7):
+        setup = "model = ModelParallelAlexNetV{}(num_classes=num_classes)" \
+            .format(version + 1)
 
-    rn_run_times = timeit.repeat(
-        stmt, setup, number=1, repeat=num_repeat, globals=globals())
-    rn_mean, rn_std = np.mean(rn_run_times), np.std(rn_run_times)
+        rn_run_times = timeit.repeat(
+            stmt, setup, number=1, repeat=num_repeat, globals=globals())
+        rn_mean, rn_std = np.mean(rn_run_times), np.std(rn_run_times)
+        per_run_stats.append(rn_mean)
+        print("Devices {}: Model Parallel V{} Training Time: {}".format(
+            version + 2,
+            str(version + 1),
+            rn_mean))
+    all_stats.append(per_run_stats)
 
-    print("Devices {}: Model Parallel V{} Training Time: {}".format(version+2,
-          str(version + 1),
-          rn_mean) )
+
+summary_ar = np.array(all_stats)
+
+mean2 = summary_ar.mean(axis=0)
+
+print(mean2)
