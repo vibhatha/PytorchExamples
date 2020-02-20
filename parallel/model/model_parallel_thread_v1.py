@@ -276,12 +276,14 @@ class PipelineParallelResNet50(ModelParallelResNet50):
             # self.taskA(s_prev=s_prev, ret=ret)
             # x = threading.Thread(target=self.taskA, args=(s_prev, ret))
             # x.start()
-            p = mp.Process(target=self.taskA, args=(s_prev, ret))
-            p.start()
+            #p = mp.Process(target=self.taskA, args=(s_prev, ret))
+            sp = mp.spawn(target=self.taskA, args=(s_prev, ret))
+
+            #p.start()
 
             # B. s_next runs on cuda:0, which can run concurrently with A
             self.taskB(s_next=s_next)
-            p.join()
+            sp.join()
 
         s_prev = self.seq2(s_prev)
         ret.append(self.fc(s_prev.view(s_prev.size(0), -1)))
