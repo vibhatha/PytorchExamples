@@ -277,7 +277,7 @@ class PipelineParallelResNet50(ModelParallelResNet50):
             # x = threading.Thread(target=self.taskA, args=(s_prev, ret))
             # x.start()
             #p = mp.Process(target=self.taskA, args=(s_prev, ret))
-            sp = mp.spawn(target=self.taskA, args=(s_prev, ret))
+            sp = mp.spawn(fn=self.taskA, args=(s_prev, ret))
 
             #p.start()
 
@@ -306,10 +306,12 @@ def train(model):
         .random_(0, num_classes) \
         .view(batch_size, 1)
 
+    one_hot_indices.requires_grad = True
+
     for _ in range(num_batches):
         # generate random inputs and labels
-        inputs = torch.randn(batch_size, 3, image_w, image_h)
-        labels = torch.zeros(batch_size, num_classes) \
+        inputs = torch.randn(batch_size, 3, image_w, image_h, requires_grad=True)
+        labels = torch.zeros(batch_size, num_classes, requires_grad=True) \
             .scatter_(1, one_hot_indices, 1)
 
         # run forward pass
