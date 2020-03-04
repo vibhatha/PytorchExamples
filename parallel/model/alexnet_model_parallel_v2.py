@@ -24,9 +24,9 @@ class AlexNet(nn.Module):
             nn.Conv2d(256, 256, kernel_size=3, padding=1),
             nn.ReLU(inplace=True),
             nn.MaxPool2d(kernel_size=3, stride=2),
-        )
+        ).to('cuda:0')
 
-        self.avgpool = nn.AdaptiveAvgPool2d((6, 6))
+        self.avgpool = nn.AdaptiveAvgPool2d((6, 6)).to('cuda:0')
 
         self.classifier = nn.Sequential(
             nn.Dropout(),
@@ -36,22 +36,22 @@ class AlexNet(nn.Module):
             nn.Linear(4096, 4096),
             nn.ReLU(inplace=True),
             nn.Linear(4096, num_classes),
-        )
+        ).to('cuda:1')
 
     def forward(self, x):
         x = self.features(x)
-        x = self.avgpool(x)
+        x = self.avgpool(x).to('cuda:1')
         x = torch.flatten(x, 1)
         x = self.classifier(x)
         return x
 
 
 num_classes = 1000
-num_batches = 10
+num_batches = 1
 batch_size = 120
 image_w = 128
 image_h = 128
-num_repeat = 20
+num_repeat = 3
 
 cuda_available = torch.cuda.is_available()
 
@@ -81,7 +81,7 @@ def train(model):
             outputs = model(inputs.to('cuda:0'))
         else:
             outputs = model(inputs)
-        # print("Output-device {}".format(outputs.device))
+        #print("Output-device {}".format(outputs.device))
 
         # run backward pass
         labels = labels.to(outputs.device)
@@ -93,22 +93,13 @@ stmt = "train(model)"
 setup = None
 
 if cuda_available:
-    setup = "model = AlexNet(num_classes=num_classes).to('cuda:0')"
+    setup = "model = AlexNet(num_classes=num_classes)"
 else:
     setup = "model = AlexNet(num_classes=num_classes)"
 
-stats = []
+rn_run_times = timeit.repeat(
+    stmt, setup, number=1, repeat=num_repeat, globals=globals())
+rn_mean, rn_std = np.mean(rn_run_times), np.std(rn_run_times)
 
-for i in range(10):
-    rn_run_times = timeit.repeat(stmt, setup, number=1, repeat=num_repeat,
-                                 globals=globals())
-    rn_mean, rn_std = np.mean(rn_run_times), np.std(rn_run_times)
-    stats.append(rn_mean)
-    print("Single Node Training Time:", rn_mean)
 
-stats_ar = np.array(stats)
-mean = stats_ar.mean()
-print(" Mean Training Time {}".format(mean))
-
-with open('stats_alexnet_s_v1.csv', 'a+') as fp:
-    fp.write(str(mean) + "\n")
+print("Single Node Training Time:", rn_mean)

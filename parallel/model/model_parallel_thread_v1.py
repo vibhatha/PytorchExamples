@@ -1,20 +1,20 @@
 import torch
 import torch.nn as nn
 import torch.optim as optim
-import threading
 import torch.multiprocessing as mp
-import concurrent.futures
 
 
 def conv1x1(in_planes, out_planes, stride=1):
     """1x1 convolution"""
-    return nn.Conv2d(in_planes, out_planes, kernel_size=1, stride=stride, bias=False)
+    return nn.Conv2d(in_planes, out_planes, kernel_size=1, stride=stride,
+                     bias=False)
 
 
 def conv3x3(in_planes, out_planes, stride=1, groups=1, dilation=1):
     """3x3 convolution with padding"""
     return nn.Conv2d(in_planes, out_planes, kernel_size=3, stride=stride,
-                     padding=dilation, groups=groups, bias=False, dilation=dilation)
+                     padding=dilation, groups=groups, bias=False,
+                     dilation=dilation)
 
 
 class BasicBlock(nn.Module):
@@ -27,7 +27,8 @@ class BasicBlock(nn.Module):
         if norm_layer is None:
             norm_layer = nn.BatchNorm2d
         if groups != 1 or base_width != 64:
-            raise Exception('BasicBlock only supports groups=1 and base_width=64')
+            raise Exception(
+                'BasicBlock only supports groups=1 and base_width=64')
         if dilation > 1:
             raise Exception("Dilation > 1 not supported in BasicBlock")
         # Both self.conv1 and self.downsample layers downsample the input when stride != 1
@@ -104,8 +105,10 @@ class Bottleneck(nn.Module):
 
 class ResNet(nn.Module):
 
-    def __init__(self, block, layers, num_classes=1000, zero_init_residual=False,
-                 groups=1, width_per_group=64, replace_stride_with_dilation=None,
+    def __init__(self, block, layers, num_classes=1000,
+                 zero_init_residual=False,
+                 groups=1, width_per_group=64,
+                 replace_stride_with_dilation=None,
                  norm_layer=None):
         super(ResNet, self).__init__()
         if norm_layer is None:
@@ -120,10 +123,12 @@ class ResNet(nn.Module):
             replace_stride_with_dilation = [False, False, False]
         if len(replace_stride_with_dilation) != 3:
             raise Exception("replace_stride_with_dilation should be None "
-                            "or a 3-element tuple, got {}".format(replace_stride_with_dilation))
+                            "or a 3-element tuple, got {}".format(
+                replace_stride_with_dilation))
         self.groups = groups
         self.base_width = width_per_group
-        self.conv1 = nn.Conv2d(3, self.inplanes, kernel_size=7, stride=2, padding=3,
+        self.conv1 = nn.Conv2d(3, self.inplanes, kernel_size=7, stride=2,
+                               padding=3,
                                bias=False)
         self.bn1 = norm_layer(self.inplanes)
         self.relu = nn.ReLU(inplace=True)
@@ -140,7 +145,8 @@ class ResNet(nn.Module):
 
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
-                nn.init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='relu')
+                nn.init.kaiming_normal_(m.weight, mode='fan_out',
+                                        nonlinearity='relu')
             elif isinstance(m, (nn.BatchNorm2d, nn.GroupNorm)):
                 nn.init.constant_(m.weight, 1)
                 nn.init.constant_(m.bias, 0)
@@ -169,12 +175,14 @@ class ResNet(nn.Module):
             )
 
         layers = []
-        layers.append(block(self.inplanes, planes, stride, downsample, self.groups,
-                            self.base_width, previous_dilation, norm_layer))
+        layers.append(
+            block(self.inplanes, planes, stride, downsample, self.groups,
+                  self.base_width, previous_dilation, norm_layer))
         self.inplanes = planes * block.expansion
         for _ in range(1, blocks):
             layers.append(block(self.inplanes, planes, groups=self.groups,
-                                base_width=self.base_width, dilation=self.dilation,
+                                base_width=self.base_width,
+                                dilation=self.dilation,
                                 norm_layer=norm_layer))
 
         return nn.Sequential(*layers)
@@ -226,6 +234,7 @@ class ModelParallelResNet50(ResNet):
             self.bn1,
             self.relu,
             self.maxpool,
+
             self.layer1,
             self.layer2
         ).to('cuda:0')
@@ -265,14 +274,16 @@ class PipelineParallelResNet50(ModelParallelResNet50):
         for s_next in splits:
             # A. s_prev runs on cuda:1
             # self.taskA(s_prev=s_prev, ret=ret)
-            with concurrent.futures.ThreadPoolExecutor() as executor:
-                futureA = executor.submit(self.taskA, s_prev, ret)
-                futureA.result()
+            # x = threading.Thread(target=self.taskA, args=(s_prev, ret))
+            # x.start()
+            #p = mp.Process(target=self.taskA, args=(s_prev, ret))
+            sp = mp.spawn(fn=self.taskA, args=(s_prev, ret))
+
+            #p.start()
 
             # B. s_next runs on cuda:0, which can run concurrently with A
-            with concurrent.futures.ThreadPoolExecutor() as executor:
-                futureB = executor.submit(self.taskB, s_next)
-                s_prev = futureB.result()
+            self.taskB(s_next=s_next)
+            sp.join()
 
         s_prev = self.seq2(s_prev)
         ret.append(self.fc(s_prev.view(s_prev.size(0), -1)))
@@ -280,7 +291,7 @@ class PipelineParallelResNet50(ModelParallelResNet50):
         return torch.cat(ret)
 
 
-num_batches = 1
+num_batches = 3
 batch_size = 120
 image_w = 128
 image_h = 128
@@ -295,16 +306,18 @@ def train(model):
         .random_(0, num_classes) \
         .view(batch_size, 1)
 
+    one_hot_indices.requires_grad = True
+
     for _ in range(num_batches):
         # generate random inputs and labels
-        inputs = torch.randn(batch_size, 3, image_w, image_h)
-        labels = torch.zeros(batch_size, num_classes) \
+        inputs = torch.randn(batch_size, 3, image_w, image_h, requires_grad=True)
+        labels = torch.zeros(batch_size, num_classes, requires_grad=True) \
             .scatter_(1, one_hot_indices, 1)
 
         # run forward pass
         optimizer.zero_grad()
         outputs = model(inputs.to('cuda:0'))
-        # print("Output-device {}".format(outputs.device))
+        print("Output-device {}".format(outputs.device))
 
         # run backward pass
         labels = labels.to(outputs.device)
@@ -318,75 +331,37 @@ import matplotlib.pyplot as plt
 
 plt.switch_backend('Agg')
 import numpy as np
-import timeit
+import time
 
-num_repeat = 3
+num_repeat = 10
 
-stmt = "train(model.share_memory())"
-
-setup = "model = ModelParallelResNet50()"
-# globals arg is only available in Python 3. In Python 2, use the following
-# import __builtin__
-# __builtin__.__dict__.update(locals())
-mp_run_times = timeit.repeat(
-    stmt, setup, number=1, repeat=num_repeat, globals=globals())
-mp_mean, mp_std = np.mean(mp_run_times), np.std(mp_run_times)
-
-setup = "model = resnet50(num_classes=num_classes).to('cuda:0')"
-rn_run_times = timeit.repeat(
-    stmt, setup, number=1, repeat=num_repeat, globals=globals())
-rn_mean, rn_std = np.mean(rn_run_times), np.std(rn_run_times)
-
-
-def plot(means, stds, labels, fig_name):
-    fig, ax = plt.subplots()
-    ax.bar(np.arange(len(means)), means, yerr=stds,
-           align='center', alpha=0.5, ecolor='red', capsize=10, width=0.6)
-    ax.set_ylabel('ResNet50 Execution Time (Second)')
-    ax.set_xticks(np.arange(len(means)))
-    ax.set_xticklabels(labels)
-    ax.yaxis.grid(True)
-    plt.tight_layout()
-    plt.savefig(fig_name)
-    plt.close(fig)
-
-
-# plot([mp_mean, rn_mean],
-#      [mp_std, rn_std],
-#      ['Model Parallel', 'Single GPU'],
-#      'mp_vs_rn.png')
-
-
-########### Pipeline Parallel ################
-print("Running Pipeline Parallel ResNet50 Once for Split 20")
-
-setup = "model = PipelineParallelResNet50()"
-pp_run_times = timeit.repeat(
-    stmt, setup, number=1, repeat=num_repeat, globals=globals())
-pp_mean, pp_std = np.mean(pp_run_times), np.std(pp_run_times)
-
-# plot([mp_mean, rn_mean, pp_mean],
-#      [mp_std, rn_std, pp_std],
-#      ['Model Parallel', 'Single GPU', 'Pipelining Model Parallel'],
-#      'mp_vs_rn_vs_pp.png')
-
-
-##### Variable Split Sizes for Batch #####
 print("Running Pipeline Parallel ResNet50 for multiple split sizes")
 means = []
 stds = []
 split_sizes = [1, 2, 4, 5, 10, 20, 50, 100]
-split_sizes = [1, 3, 5, 8, 10, 12, 15, 20, 30, 40, 60]
+split_sizes = [1, 3, 5, 8, 10, 12, 20, 40, 60]
+
+_devices = ['cuda:0', 'cuda:1']
+in_device = _devices[0]
+out_device = _devices[-1]
 
 for split_size in split_sizes:
     print("Split Size {}".format(split_size))
-    setup = "model = PipelineParallelResNet50(split_size=%d)" % split_size
-    pp_run_times = timeit.repeat(
-        stmt, setup, number=1, repeat=num_repeat, globals=globals())
-    means.append(np.mean(pp_run_times))
-    stds.append(np.std(pp_run_times))
+    model = PipelineParallelResNet50(split_size=split_size).cuda()
+    model.share_memory()
+
+    times = []
+    for i in range(num_repeat):
+        torch.cuda.synchronize(in_device)
+        tick = time.time()
+        train(model)
+        tock = time.time()
+        torch.cuda.synchronize(in_device)
+        times.append(tock-tick)
+    times = np.array(times)
+    means.append(np.mean(times))
+    stds.append(np.std(times))
 
 ###########################################
 
-print("Model Parallel Mean {}, Single Node Mean{}, Pipeline Mean {} ".format(mp_mean, rn_mean, pp_mean))
-print("Pipeline Variables : {}".format(means))
+print("Mean Times: {}".format(means))
