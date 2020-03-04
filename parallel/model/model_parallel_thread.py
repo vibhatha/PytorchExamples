@@ -3,6 +3,7 @@ import torch.nn as nn
 import torch.optim as optim
 import threading
 import torch.multiprocessing as mp
+import concurrent.futures
 
 
 def conv1x1(in_planes, out_planes, stride=1):
@@ -264,14 +265,21 @@ class PipelineParallelResNet50(ModelParallelResNet50):
         for s_next in splits:
             # A. s_prev runs on cuda:1
             # self.taskA(s_prev=s_prev, ret=ret)
+            with concurrent.futures.ThreadPoolExecutor() as executor:
+                futureA = executor.submit(self.taskA, s_prev, ret)
+                futureA.result()
             #x = threading.Thread(target=self.taskA, args=(s_prev, ret))
             #x.start()
-            p = mp.Process(target=self.taskA, args=(s_prev, ret))
-            p.start()
+            #p = mp.Process(target=self.taskA, args=(s_prev, ret))
+            #p.start()
 
             # B. s_next runs on cuda:0, which can run concurrently with A
-            self.taskB(s_next=s_next)
-            p.join()
+            #y = threading.Thread(target=self.taskB, args=(s_next))
+            with concurrent.futures.ThreadPoolExecutor() as executor:
+                futureB = executor.submit(self.taskB, s_next)
+                s_prev = futureB.result()
+            #y.start()
+            #x.join()
 
         s_prev = self.seq2(s_prev)
         ret.append(self.fc(s_prev.view(s_prev.size(0), -1)))
