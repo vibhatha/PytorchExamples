@@ -223,20 +223,21 @@ class ModelParallelResNet50(ResNet):
             self.bn1,
             self.relu,
             self.maxpool,
+
             self.layer1,
             self.layer2
-        ).to('cuda:0')
+        ).to('cpu:0')
 
         self.seq2 = nn.Sequential(
             self.layer3,
             self.layer4,
             self.avgpool,
-        ).to('cuda:1')
+        ).to('cpu:1')
 
-        self.fc.to('cuda:1')
+        self.fc.to('cpu:1')
 
     def forward(self, x):
-        x = self.seq2(self.seq1(x).to('cuda:1'))
+        x = self.seq2(self.seq1(x).to('cpu:1'))
         return self.fc(x.view(x.size(0), -1))
 
 
@@ -248,7 +249,7 @@ class PipelineParallelResNet50(ModelParallelResNet50):
     def forward(self, x):
         splits = iter(x.split(self.split_size, dim=0))
         s_next = next(splits)
-        s_prev = self.seq1(s_next).to('cuda:1')
+        s_prev = self.seq1(s_next).to('cpu:1')
         ret = []
 
         for s_next in splits:
@@ -257,7 +258,7 @@ class PipelineParallelResNet50(ModelParallelResNet50):
             ret.append(self.fc(s_prev.view(s_prev.size(0), -1)))
 
             # B. s_next runs on cuda:0, which can run concurrently with A
-            s_prev = self.seq1(s_next).to('cuda:1')
+            s_prev = self.seq1(s_next).to('cpu:1')
 
         s_prev = self.seq2(s_prev)
         ret.append(self.fc(s_prev.view(s_prev.size(0), -1)))
@@ -288,8 +289,7 @@ def train(model):
 
         # run forward pass
         optimizer.zero_grad()
-        outputs = model(inputs.to('cuda:0'))
-        print("Output-device {}".format(outputs.device))
+        outputs = model(inputs.to('cpu:0'))
 
         # run backward pass
         labels = labels.to(outputs.device)
@@ -298,7 +298,7 @@ def train(model):
 
 
 #########
-print("Running Model Parallel Resnet50")
+
 import matplotlib.pyplot as plt
 
 plt.switch_backend('Agg')
@@ -317,7 +317,7 @@ mp_run_times = timeit.repeat(
     stmt, setup, number=1, repeat=num_repeat, globals=globals())
 mp_mean, mp_std = np.mean(mp_run_times), np.std(mp_run_times)
 
-setup = "model = resnet50(num_classes=num_classes).to('cuda:0')"
+setup = "model = resnet50(num_classes=num_classes).to('cpu:0')"
 rn_run_times = timeit.repeat(
     stmt, setup, number=1, repeat=num_repeat, globals=globals())
 rn_mean, rn_std = np.mean(rn_run_times), np.std(rn_run_times)
@@ -343,7 +343,6 @@ def plot(means, stds, labels, fig_name):
 
 
 ########### Pipeline Parallel ################
-print("Running Pipeline Parallel ResNet50 Once for Split 20")
 
 setup = "model = PipelineParallelResNet50()"
 pp_run_times = timeit.repeat(
@@ -357,14 +356,12 @@ pp_mean, pp_std = np.mean(pp_run_times), np.std(pp_run_times)
 
 
 ##### Variable Split Sizes for Batch #####
-print("Running Pipeline Parallel ResNet50 for multiple split sizes")
+
 means = []
 stds = []
-split_sizes = [1, 2, 4, 5, 10, 20, 50, 100]
 split_sizes = [1, 3, 5, 8, 10, 12, 20, 40, 60]
 
 for split_size in split_sizes:
-    print("Split Size {}".format(split_size))
     setup = "model = PipelineParallelResNet50(split_size=%d)" % split_size
     pp_run_times = timeit.repeat(
         stmt, setup, number=1, repeat=num_repeat, globals=globals())

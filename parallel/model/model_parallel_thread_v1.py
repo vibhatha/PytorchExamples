@@ -252,16 +252,19 @@ class ModelParallelResNet50(ResNet):
         return self.fc(x.view(x.size(0), -1))
 
 
+from multiprocessing import Process
+
+
 class PipelineParallelResNet50(ModelParallelResNet50):
     def __init__(self, split_size=20, *args, **kwargs):
         super(PipelineParallelResNet50, self).__init__(*args, **kwargs)
         self.split_size = split_size
 
-    def taskA(self, s_prev, ret):
+    def taskA(self, s_prev: torch.Tensor, ret):
         s_prev = self.seq2(s_prev)
         ret.append(self.fc(s_prev.view(s_prev.size(0), -1)))
 
-    def taskB(self, s_next):
+    def taskB(self, s_next: torch.Tensor):
         s_prev = self.seq1(s_next).to('cuda:1')
         return s_prev
 
@@ -274,16 +277,20 @@ class PipelineParallelResNet50(ModelParallelResNet50):
         for s_next in splits:
             # A. s_prev runs on cuda:1
             # self.taskA(s_prev=s_prev, ret=ret)
-            # x = threading.Thread(target=self.taskA, args=(s_prev, ret))
-            # x.start()
-            #p = mp.Process(target=self.taskA, args=(s_prev, ret))
-            sp = mp.spawn(fn=self.taskA, args=(s_prev, ret))
-
-            #p.start()
+            x = Process(target=self.taskA, args=(s_prev, ret))
+            x.start()
+            # p = mp.Process(target=self.taskA, args=(s_prev, ret))
+            # s_prev = s_prev.detach()
+            # p = mp.Process(target=self.taskA, args=(s_prev, ret))
+            # sp = mp.spawn(fn=self.taskA, args=(s_prev, ret))
 
             # B. s_next runs on cuda:0, which can run concurrently with A
-            self.taskB(s_next=s_next)
-            sp.join()
+            # self.taskB(s_next=s_next)
+            x1 = Process(target=self.taskB, args=(s_next))
+            x1.start()
+
+            x.join()
+            x1.join()
 
         s_prev = self.seq2(s_prev)
         ret.append(self.fc(s_prev.view(s_prev.size(0), -1)))
@@ -306,12 +313,10 @@ def train(model):
         .random_(0, num_classes) \
         .view(batch_size, 1)
 
-    one_hot_indices.requires_grad = True
-
     for _ in range(num_batches):
         # generate random inputs and labels
-        inputs = torch.randn(batch_size, 3, image_w, image_h, requires_grad=True)
-        labels = torch.zeros(batch_size, num_classes, requires_grad=True) \
+        inputs = torch.randn(batch_size, 3, image_w, image_h)
+        labels = torch.zeros(batch_size, num_classes) \
             .scatter_(1, one_hot_indices, 1)
 
         # run forward pass
@@ -347,8 +352,9 @@ out_device = _devices[-1]
 
 for split_size in split_sizes:
     print("Split Size {}".format(split_size))
-    model = PipelineParallelResNet50(split_size=split_size).cuda()
-    model.share_memory()
+    # mp.set_start_method('spawn')
+    model = PipelineParallelResNet50(split_size=split_size)
+    #model.share_memory()
 
     times = []
     for i in range(num_repeat):
@@ -357,7 +363,7 @@ for split_size in split_sizes:
         train(model)
         tock = time.time()
         torch.cuda.synchronize(in_device)
-        times.append(tock-tick)
+        times.append(tock - tick)
     times = np.array(times)
     means.append(np.mean(times))
     stds.append(np.std(times))

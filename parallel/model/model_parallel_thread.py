@@ -268,6 +268,7 @@ class PipelineParallelResNet50(ModelParallelResNet50):
             with concurrent.futures.ThreadPoolExecutor() as executor:
                 futureA = executor.submit(self.taskA, s_prev, ret)
                 futureA.result()
+
             #x = threading.Thread(target=self.taskA, args=(s_prev, ret))
             #x.start()
             #p = mp.Process(target=self.taskA, args=(s_prev, ret))
