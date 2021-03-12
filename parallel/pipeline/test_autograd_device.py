@@ -1,7 +1,7 @@
 import torch
 
 
-class MyReLU(torch.autograd.Function):
+class MyReLU1(torch.autograd.Function):
     """
     We can implement our own custom autograd Functions by subclassing
     torch.autograd.Function and implementing the forward and backward passes
@@ -16,8 +16,10 @@ class MyReLU(torch.autograd.Function):
         to stash information for backward computation. You can cache arbitrary
         objects for use in the backward pass using the ctx.save_for_backward method.
         """
-        input.to('cuda:1')
-        ctx.save_for_backward(input)
+
+        cloned_input = input.clone()
+        cloned_input.to('cuda:1')
+        ctx.save_for_backward(cloned_input)
         return input.clamp(min=0)
 
     @staticmethod
@@ -30,7 +32,8 @@ class MyReLU(torch.autograd.Function):
         input, = ctx.saved_tensors
         grad_input = grad_output.clone()
         grad_input[input < 0] = 0
-        grad_input.to('cuda:0')
+        clone_grad_input = grad_input.clone()
+        clone_grad_input.to('cuda:0')
         return grad_input
 
 
@@ -43,32 +46,38 @@ device = torch.device("cpu")
 N, D_in, H, D_out = 64, 1000, 100, 10
 
 # Create random Tensors to hold input and outputs.
+
 x = torch.randn(N, D_in, device=device, dtype=dtype)
 y = torch.randn(N, D_out, device=device, dtype=dtype)
 
 x.to('cuda:0')
-y.to('cuda:0')
+y.to('cuda:1')
 
 # Create random Tensors for weights.
 w1 = torch.randn(D_in, H, device=device, dtype=dtype, requires_grad=True)
 w2 = torch.randn(H, D_out, device=device, dtype=dtype, requires_grad=True)
 
+
 learning_rate = 1e-6
 for t in range(500):
     # To apply our Function, we use Function.apply method. We alias this as 'relu'.
-    relu = MyReLU.apply
+    relu = MyReLU1.apply
 
     # Forward pass: compute predicted y using operations; we compute
     # ReLU using our custom autograd operation.
     y_pred = relu(x.mm(w1)).mm(w2)
 
+    y_pred.to('cuda:1')
+
     # Compute and print loss
-    loss = (y_pred - y).pow(2).sum()
+    loss_val = (y_pred - y).pow(2).sum()
+    loss_val_clone = loss_val.clone()
+    loss = loss_val_clone.to('cpu')
     if t % 100 == 99:
         print(t, loss.item())
 
     # Use autograd to compute the backward pass.
-    loss.backward()
+    loss_val.backward()
 
     # Update weights using gradient descent
     with torch.no_grad():
