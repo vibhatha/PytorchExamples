@@ -65,7 +65,7 @@ class ToyModel(nn.Module):
 
 
 def demo_basic(rank, world_size, data):
-    print(f"Running basic DDP example on rank {rank} : {data}.")
+    print(f"Running basic DDP example on rank {rank} : {data.shape} {data[0]}.")
     setup(rank, world_size)
     data_tensor = torch.from_numpy(data)
     # create model and move it to GPU with id rank
@@ -99,7 +99,7 @@ def mpi_program():
 
 def run_demo(demo_fn, world_size):
     rank, size, data = mpi_program()
-    print("Final Data From ", data)
+    print("Final Data From ", data.shape, data[0])
     demo_fn(rank, size, data)
 
 
