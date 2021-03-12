@@ -267,5 +267,5 @@ if __name__ == '__main__':
 ### Run
 
 ```bash
-horovodrun --mpi -np 4 python3 pytorch_mnist.p
+horovodrun --mpi -np 4 python3 pytorch_mnist.py
 ```

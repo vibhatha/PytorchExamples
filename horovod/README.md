@@ -1,3 +1,8 @@
+# Running Horovod Simple Example 
+
+## Code
+
+```python
 from __future__ import print_function, division
 import torch
 import numpy as np
@@ -86,3 +91,11 @@ for batch_id, data in enumerate(data_loader):
     print(batch_id, type(data), data.shape)
 
     train(rank, world_size, data, model, loss_fn, optimizer)
+
+```
+
+## RUN with MPI
+
+```bash
+horovodrun --mpi -n 4 python horovod/horovod_sample.py
+```
