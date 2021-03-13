@@ -39,6 +39,7 @@ def demo_basic(rank, world_size):
     labels = torch.randn(20, 5)
     loss_fn(outputs, labels).backward()
     optimizer.step()
+    print("Complete basic DDP example on rank ", rank)
 
 
 
