@@ -269,3 +269,10 @@ if __name__ == '__main__':
 ```bash
 horovodrun --mpi -np 4 python3 pytorch_mnist.py
 ```
+
+## OPENMPI Configs for IB
+
+```bash
+export OMPI_MCA_btl_openib_allow_ib=1
+export OMPI_MCA_btl_openib_if_include="mlx4_0:1"
+```
